@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MEP Project Follow-Up &amp; Monitoring</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
+    --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --accent2:#0ea5e9;
+    --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --grey:#64748b; --blue:#3b82f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
+  header{background:linear-gradient(135deg,#0c4a6e,#0e7490);padding:18px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  header h1{font-size:1.25rem;display:flex;align-items:center;gap:10px}
+  .proj-name{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 10px;border-radius:6px;font-size:.9rem;min-width:200px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{cursor:pointer;border:none;border-radius:6px;padding:8px 14px;font-size:.85rem;font-weight:600;transition:.15s}
+  .btn-primary{background:var(--accent);color:#04263b}
+  .btn-primary:hover{background:var(--accent2)}
+  .btn-ghost{background:rgba(255,255,255,.12);color:#fff}
+  .btn-ghost:hover{background:rgba(255,255,255,.22)}
+  .btn-sm{padding:4px 9px;font-size:.75rem}
+  .btn-danger{background:transparent;color:var(--red);border:1px solid var(--red)}
+  .btn-danger:hover{background:var(--red);color:#fff}
+  .wrap{max-width:1280px;margin:0 auto;padding:20px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .kpi .label{font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .kpi .val{font-size:1.9rem;font-weight:700;margin-top:4px}
+  .kpi .sub{font-size:.75rem;color:var(--muted);margin-top:2px}
+  .progress-track{height:9px;background:var(--panel2);border-radius:6px;overflow:hidden;margin-top:10px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--green),#16a34a);border-radius:6px;transition:width .4s}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap}
+  .tab{background:none;color:var(--muted);border-bottom:3px solid transparent;border-radius:0;padding:10px 18px}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px 10px;font-size:.85rem;font-family:inherit}
+  input::placeholder{color:var(--grey)}
+  .search{flex:1;min-width:180px}
+  .table-wrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:760px}
+  th,td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);position:sticky;top:0;cursor:pointer;white-space:nowrap}
+  th:hover{color:var(--text)}
+  tr:hover td{background:rgba(255,255,255,.03)}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:600;white-space:nowrap}
+  .b-green{background:rgba(34,197,94,.18);color:#4ade80}
+  .b-amber{background:rgba(245,158,11,.18);color:#fbbf24}
+  .b-red{background:rgba(239,68,68,.18);color:#f87171}
+  .b-grey{background:rgba(100,116,139,.22);color:#cbd5e1}
+  .b-blue{background:rgba(59,130,246,.18);color:#60a5fa}
+  .prio-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+  .row-actions{display:flex;gap:6px}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .overdue{color:#f87171;font-weight:600}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:100%;max-width:560px;padding:22px}
+  .modal h3{margin-bottom:16px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .form-grid .full{grid-column:1/-1}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:.75rem;color:var(--muted)}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+  footer{text-align:center;color:var(--grey);font-size:.75rem;padding:24px}
+  .hint{font-size:.78rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:10px 12px;margin-bottom:16px}
+  .banner{padding:12px 16px;font-size:.85rem;display:none}
+  .banner.show{display:block}
+  .banner.warn{background:#422006;color:#fcd34d;border-bottom:1px solid #92400e}
+  .banner.ok{background:#052e16;color:#86efac;border-bottom:1px solid #166534}
+  .banner.err{background:#450a0a;color:#fca5a5;border-bottom:1px solid #991b1b}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  @media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+  @media print{header .toolbar,.tabs,.filters,.row-actions,.modal-bg,.banner{display:none!important}body{background:#fff;color:#000}}
+</style>
+</head>
+<body>
+<div class="banner" id="banner"></div>
+<header>
+  <h1>🏗️ MEP Project Follow-Up</h1>
+  <input id="projName" class="proj-name" placeholder="Project name…">
+  <div class="toolbar">
+    <span id="liveStatus" style="font-size:.78rem;color:#bae6fd"></span>
+    <button class="btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
+    <button class="btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="tasks" onclick="switchTab('tasks')">📋 Tasks / Progress</button>
+    <button class="tab" data-tab="submittals" onclick="switchTab('submittals')">📄 Submittals / Documents</button>
+    <button class="tab" data-tab="materials" onclick="switchTab('materials')">📦 Materials</button>
+  </div>
+
+  <div class="hint" id="hint"></div>
+
+  <div class="filters">
+    <input class="search" id="search" placeholder="🔍 Search…" oninput="render()">
+    <select id="fStatus" onchange="render()"><option value="">All statuses</option></select>
+    <select id="fDiscipline" onchange="render()">
+      <option value="">All disciplines</option>
+      <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
+      <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
+    </select>
+    <button class="btn-primary" onclick="openModal()">+ Add</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="table"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Add Item</h3>
+    <div class="form-grid" id="formFields"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" id="saveBtn" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<footer>MEP Follow-Up &amp; Monitoring · shared via Supabase · live updates for the whole team</footer>
+
+<!-- Supabase client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* =================================================================
+   1) PASTE YOUR SUPABASE KEYS HERE  (see SETUP.md, step 2)
+   ================================================================= */
+const SUPABASE_URL      = "https://gkevsflbwajsovpmmhfy.supabase.co";   // your project URL
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZXZzZmxid2Fqc292cG1taGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODc2MTYsImV4cCI6MjA5NjU2MzYxNn0.BA8LYAL210ubAxDUTIeF68-FEd4PLgWJbBU78m9rstE";
+/* ================================================================= */
+
+const USING_SUPABASE = SUPABASE_URL && SUPABASE_ANON_KEY;
+let sb = null;
+if (USING_SUPABASE) { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+
+/* ---------- Schemas ---------- */
+const DISCIPLINES=["Mechanical","Electrical","Plumbing","Fire Fighting","HVAC","ELV / Low Voltage","General"];
+const SCHEMAS={
+  tasks:{
+    title:"Task / Activity",
+    statuses:["Not Started","In Progress","On Hold","Completed"],
+    hint:"Track every MEP activity: who owns it, planned vs. actual dates, and % complete. Overdue items are flagged in red.",
+    cols:[
+      {k:"title",label:"Task / Activity",type:"text",req:true},
+      {k:"discipline",label:"Discipline",type:"select",opts:DISCIPLINES},
+      {k:"owner",label:"Responsible",type:"text"},
+      {k:"location",label:"Area / Level",type:"text"},
+      {k:"priority",label:"Priority",type:"select",opts:["High","Medium","Low"]},
+      {k:"progress",label:"% Complete",type:"number"},
+      {k:"start",label:"Start Date",type:"date"},
+      {k:"due",label:"Due Date",type:"date"},
+      {k:"status",label:"Status",type:"select",opts:["Not Started","In Progress","On Hold","Completed"]},
+      {k:"notes",label:"Notes",type:"textarea",full:true}
+    ],
+    table:["title","discipline","owner","priority","progress","due","status"]
+  },
+  submittals:{
+    title:"Submittal / Document",
+    statuses:["Draft","Submitted","Under Review","Approved","Approved w/ Comments","Rejected"],
+    hint:"Track drawings, material submittals, RFIs and approvals. Ref. no., revision and approval status at a glance.",
+    cols:[
+      {k:"ref",label:"Ref. No.",type:"text",req:true},
+      {k:"title",label:"Document Title",type:"text",req:true},
+      {k:"discipline",label:"Discipline",type:"select",opts:DISCIPLINES},
+      {k:"type",label:"Type",type:"select",opts:["Shop Drawing","Material Submittal","Method Statement","RFI","Datasheet","As-Built","Other"]},
+      {k:"rev",label:"Revision",type:"text"},
+      {k:"submitted",label:"Submitted Date",type:"date"},
+      {k:"due",label:"Response Due",type:"date"},
+      {k:"status",label:"Status",type:"select",opts:["Draft","Submitted","Under Review","Approved","Approved w/ Comments","Rejected"]},
+      {k:"notes",label:"Remarks",type:"textarea",full:true}
+    ],
+    table:["ref","title","discipline","type","rev","due","status"]
+  },
+  materials:{
+    title:"Material / Equipment",
+    statuses:["Required","Approved","Ordered","Delivered","Installed","Rejected"],
+    hint:"Track procurement and delivery: approval, order, delivery and installation status of each material or equipment.",
+    cols:[
+      {k:"title",label:"Material / Equipment",type:"text",req:true},
+      {k:"discipline",label:"Discipline",type:"select",opts:DISCIPLINES},
+      {k:"supplier",label:"Supplier",type:"text"},
+      {k:"qty",label:"Qty",type:"text"},
+      {k:"location",label:"For Area",type:"text"},
+      {k:"orderDate",label:"Order Date",type:"date"},
+      {k:"eta",label:"Expected Delivery",type:"date"},
+      {k:"status",label:"Status",type:"select",opts:["Required","Approved","Ordered","Delivered","Installed","Rejected"]},
+      {k:"notes",label:"Notes",type:"textarea",full:true}
+    ],
+    table:["title","discipline","supplier","qty","eta","status"]
+  }
+};
+const STATUS_COLOR={
+  "Completed":"green","Approved":"green","Installed":"green","Delivered":"green",
+  "In Progress":"blue","Under Review":"blue","Submitted":"blue","Ordered":"blue","Approved w/ Comments":"blue",
+  "On Hold":"amber","Draft":"amber","Required":"amber",
+  "Not Started":"grey","Rejected":"red"
+};
+const PRIO_COLOR={High:"var(--red)",Medium:"var(--amber)",Low:"var(--green)"};
+
+/* ---------- State ---------- */
+let state={tasks:[],submittals:[],materials:[]};
+let current="tasks", editId=null, sortKey=null, sortDir=1;
+const LKEY="mep_followup_demo";
+
+/* ---------- Data layer (Supabase OR local demo) ---------- */
+async function loadAll(){
+  if(USING_SUPABASE){
+    try{
+      const {data,error}=await sb.from('mep_items').select('*').order('created_at',{ascending:true});
+      if(error) throw error;
+      state={tasks:[],submittals:[],materials:[]};
+      for(const row of data){ if(state[row.kind]) state[row.kind].push({id:row.id,...row.data}); }
+      banner('ok',`<span class="dot" style="background:#22c55e"></span>Connected to shared database — changes sync live for everyone.`);
+      document.getElementById('liveStatus').innerHTML='● live';
+    }catch(e){
+      banner('err','Could not reach the database. Check your keys / table setup in SETUP.md. Details: '+(e.message||e));
+    }
+  }else{
+    // Demo / offline mode: localStorage so the file still works before setup
+    try{const s=JSON.parse(localStorage.getItem(LKEY));if(s)state=s;}catch(e){}
+    if(!state.tasks.length) seedDemo();
+    banner('warn','⚙ Demo mode — data is stored only in <b>this browser</b>. Open SETUP.md and paste your Supabase keys to share live with your team.');
+    document.getElementById('liveStatus').textContent='demo';
+  }
+  render();
+}
+function persistDemo(){ if(!USING_SUPABASE) localStorage.setItem(LKEY,JSON.stringify(state)); }
+
+async function addItem(kind,fields){
+  if(USING_SUPABASE){
+    const {error}=await sb.from('mep_items').insert({kind,data:fields});
+    if(error){alert('Save failed: '+error.message);return;}
+    await loadAll();
+  }else{ fields.id=rid(); state[kind].push(fields); persistDemo(); render(); }
+}
+async function updateItem(kind,rowId,fields){
+  if(USING_SUPABASE){
+    const {error}=await sb.from('mep_items').update({data:fields,updated_at:new Date().toISOString()}).eq('id',rowId);
+    if(error){alert('Update failed: '+error.message);return;}
+    await loadAll();
+  }else{ const i=state[kind].findIndex(x=>x.id===rowId); fields.id=rowId; state[kind][i]=fields; persistDemo(); render(); }
+}
+async function deleteItem(kind,rowId){
+  if(USING_SUPABASE){
+    const {error}=await sb.from('mep_items').delete().eq('id',rowId);
+    if(error){alert('Delete failed: '+error.message);return;}
+    await loadAll();
+  }else{ state[kind]=state[kind].filter(x=>x.id!==rowId); persistDemo(); render(); }
+}
+function rid(){return Math.random().toString(36).slice(2,9);}
+
+function seedDemo(){
+  state.tasks=[
+    {id:rid(),title:"Install AHU-01 in Level 3 plant room",discipline:"HVAC",owner:"M. Khan",location:"L3 Plant",priority:"High",progress:60,start:"2026-05-10",due:"2026-06-05",status:"In Progress",notes:"Awaiting duct connection."},
+    {id:rid(),title:"Cable tray routing - main riser",discipline:"Electrical",owner:"A. Rahman",location:"Riser 1",priority:"High",progress:100,start:"2026-04-20",due:"2026-05-25",status:"Completed",notes:""},
+    {id:rid(),title:"Chilled water piping - 2nd floor",discipline:"Mechanical",owner:"S. Ali",location:"L2",priority:"Medium",progress:30,start:"2026-05-15",due:"2026-06-03",status:"In Progress",notes:"Pressure test pending."}
+  ];
+  state.submittals=[
+    {id:rid(),ref:"MS-EL-014",title:"LED Light Fixtures - Type A",discipline:"Electrical",type:"Material Submittal",rev:"R1",submitted:"2026-05-18",due:"2026-06-01",status:"Approved",notes:""},
+    {id:rid(),ref:"SD-HV-007",title:"AHU Ductwork Shop Drawings",discipline:"HVAC",type:"Shop Drawing",rev:"R2",submitted:"2026-05-28",due:"2026-06-10",status:"Under Review",notes:"Consultant reviewing."}
+  ];
+  state.materials=[
+    {id:rid(),title:"VRF Outdoor Units (8HP)",discipline:"HVAC",supplier:"CoolTech",qty:"4",location:"Roof",orderDate:"2026-05-05",eta:"2026-06-20",status:"Ordered",notes:""},
+    {id:rid(),title:"PPR Pipes 110mm",discipline:"Plumbing",supplier:"AquaSupply",qty:"200 m",location:"L1-L3",orderDate:"",eta:"",status:"Required",notes:"Pending approval."}
+  ];
+  persistDemo();
+}
+
+function banner(type,html){
+  const b=document.getElementById('banner');
+  b.className='banner show '+type; b.innerHTML=html;
+}
+
+/* ---------- Rendering ---------- */
+function switchTab(t){
+  current=t;sortKey=null;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  const fs=document.getElementById('fStatus');
+  fs.innerHTML='<option value="">All statuses</option>'+SCHEMAS[t].statuses.map(s=>`<option>${s}</option>`).join('');
+  document.getElementById('search').value='';document.getElementById('fDiscipline').value='';
+  document.getElementById('hint').textContent=SCHEMAS[t].hint;
+  render();
+}
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function isOverdue(it){
+  const done=["Completed","Approved","Installed","Delivered","Approved w/ Comments"].includes(it.status);
+  return it.due && it.due<todayStr() && !done;
+}
+function computeKpis(){
+  const t=state.tasks;
+  const done=t.filter(x=>x.status==="Completed").length;
+  const avg=t.length?Math.round(t.reduce((a,x)=>a+(+x.progress||0),0)/t.length):0;
+  const overdue=[...state.tasks,...state.submittals,...state.materials].filter(isOverdue).length;
+  const pendSub=state.submittals.filter(x=>!["Approved","Approved w/ Comments","Rejected"].includes(x.status)).length;
+  const matDelivered=state.materials.filter(x=>["Delivered","Installed"].includes(x.status)).length;
+  document.getElementById('kpis').innerHTML=`
+   <div class="kpi"><div class="label">Overall Progress</div><div class="val">${avg}%</div>
+     <div class="progress-track"><div class="progress-fill" style="width:${avg}%"></div></div></div>
+   <div class="kpi"><div class="label">Tasks Completed</div><div class="val">${done}/${t.length}</div><div class="sub">activities closed</div></div>
+   <div class="kpi"><div class="label">Open Submittals</div><div class="val">${pendSub}</div><div class="sub">awaiting approval</div></div>
+   <div class="kpi"><div class="label">Materials On Site</div><div class="val">${matDelivered}/${state.materials.length}</div><div class="sub">delivered / installed</div></div>
+   <div class="kpi"><div class="label">⚠ Overdue Items</div><div class="val" style="color:${overdue?'var(--red)':'var(--green)'}">${overdue}</div><div class="sub">across all modules</div></div>`;
+}
+function render(){
+  computeKpis();
+  const sc=SCHEMAS[current];
+  document.getElementById('thead').innerHTML='<tr>'+sc.table.map(k=>{
+    const c=sc.cols.find(x=>x.k===k);
+    const arrow=sortKey===k?(sortDir>0?' ▲':' ▼'):'';
+    return `<th onclick="sortBy('${k}')">${c.label}${arrow}</th>`;
+  }).join('')+'<th>Actions</th></tr>';
+
+  const q=document.getElementById('search').value.toLowerCase();
+  const fs=document.getElementById('fStatus').value;
+  const fd=document.getElementById('fDiscipline').value;
+  let rows=state[current].filter(it=>{
+    const text=Object.values(it).join(' ').toLowerCase();
+    return (!q||text.includes(q))&&(!fs||it.status===fs)&&(!fd||it.discipline===fd);
+  });
+  if(sortKey){rows.sort((a,b)=>((a[sortKey]||'')>(b[sortKey]||'')?1:-1)*sortDir);}
+
+  const tbody=document.getElementById('tbody');
+  if(!rows.length){tbody.innerHTML=`<tr><td colspan="${sc.table.length+1}" class="empty">No items. Click “+ Add” to create one.</td></tr>`;return;}
+  tbody.innerHTML=rows.map(it=>'<tr>'+sc.table.map(k=>{
+    let v=it[k]??'';
+    if(k==='status')v=`<span class="badge b-${STATUS_COLOR[v]||'grey'}">${v||'-'}</span>`;
+    else if(k==='priority'&&v)v=`<span class="prio-dot" style="background:${PRIO_COLOR[v]}"></span>${v}`;
+    else if(k==='progress')v=(v||0)+'%';
+    else if(k==='due'&&v){v=isOverdue(it)?`<span class="overdue">${v} ⚠</span>`:v;}
+    return `<td>${v||'<span style="color:var(--grey)">–</span>'}</td>`;
+  }).join('')+`<td><div class="row-actions">
+     <button class="btn-ghost btn-sm" onclick="openModal('${it.id}')">Edit</button>
+     <button class="btn-danger btn-sm" onclick="del('${it.id}')">✕</button></div></td></tr>`).join('');
+}
+function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();}
+
+/* ---------- CRUD UI ---------- */
+function openModal(eid){
+  editId=eid||null;
+  const sc=SCHEMAS[current];
+  const item=eid?state[current].find(x=>x.id===eid):{};
+  document.getElementById('modalTitle').textContent=(eid?'Edit ':'Add ')+sc.title;
+  document.getElementById('formFields').innerHTML=sc.cols.map(c=>{
+    const val=item[c.k]??'';
+    let input;
+    if(c.type==='select')input=`<select id="f_${c.k}">${c.opts.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    else if(c.type==='textarea')input=`<textarea id="f_${c.k}" rows="2">${val}</textarea>`;
+    else input=`<input id="f_${c.k}" type="${c.type}" value="${val}" ${c.type==='number'?'min="0" max="100"':''}>`;
+    return `<div class="field ${c.full?'full':''}"><label>${c.label}${c.req?' *':''}</label>${input}</div>`;
+  }).join('');
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;}
+async function saveItem(){
+  const sc=SCHEMAS[current];const obj={};
+  for(const c of sc.cols){obj[c.k]=document.getElementById('f_'+c.k).value.trim();}
+  const miss=sc.cols.filter(c=>c.req&&!obj[c.k]);
+  if(miss.length){alert('Please fill: '+miss.map(c=>c.label).join(', '));return;}
+  const btn=document.getElementById('saveBtn');btn.textContent='Saving…';btn.disabled=true;
+  const kind=current, ed=editId;
+  closeModal();
+  if(ed) await updateItem(kind,ed,obj); else await addItem(kind,obj);
+  btn.textContent='Save';btn.disabled=false;
+}
+async function del(eid){ if(!confirm('Delete this item?'))return; await deleteItem(current,eid); }
+
+/* ---------- Init + live sync ---------- */
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
+switchTab('tasks');
+loadAll();
+if(USING_SUPABASE){
+  sb.channel('mep_live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'mep_items'},()=>loadAll())
+    .subscribe();
+}
+</script>
+</body>
+</html>
