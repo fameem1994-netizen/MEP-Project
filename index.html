@@ -3,19 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MEP Project Follow-Up &amp; Monitoring</title>
+<title>MEP Project Follow-Up & Monitoring</title>
 <style>
   :root{
-    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
-    --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --accent2:#0ea5e9;
-    --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --grey:#64748b; --blue:#3b82f6;
+    --bg:#0f172a;--panel:#1e293b;--panel2:#273449;--line:#334155;
+    --text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--accent2:#0ea5e9;
+    --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--grey:#64748b;--blue:#3b82f6;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
-  header{background:linear-gradient(135deg,#0c4a6e,#0e7490);padding:18px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-  header h1{font-size:1.25rem;display:flex;align-items:center;gap:10px}
+  body{font-family:'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
+  header{background:linear-gradient(135deg,#0c4a6e,#0e7490);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  header h1{font-size:1.2rem;display:flex;align-items:center;gap:8px}
   .proj-name{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 10px;border-radius:6px;font-size:.9rem;min-width:200px}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   button{cursor:pointer;border:none;border-radius:6px;padding:8px 14px;font-size:.85rem;font-weight:600;transition:.15s}
   .btn-primary{background:var(--accent);color:#04263b}
   .btn-primary:hover{background:var(--accent2)}
@@ -24,56 +24,93 @@
   .btn-sm{padding:4px 9px;font-size:.75rem}
   .btn-danger{background:transparent;color:var(--red);border:1px solid var(--red)}
   .btn-danger:hover{background:var(--red);color:#fff}
-  .wrap{max-width:1280px;margin:0 auto;padding:20px}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
-  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
-  .kpi .label{font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
-  .kpi .val{font-size:1.9rem;font-weight:700;margin-top:4px}
-  .kpi .sub{font-size:.75rem;color:var(--muted);margin-top:2px}
-  .progress-track{height:9px;background:var(--panel2);border-radius:6px;overflow:hidden;margin-top:10px}
+  .wrap{max-width:1300px;margin:0 auto;padding:20px}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .kpi .label{font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .kpi .val{font-size:1.8rem;font-weight:700;margin-top:4px}
+  .kpi .sub{font-size:.72rem;color:var(--muted);margin-top:2px}
+  .progress-track{height:8px;background:var(--panel2);border-radius:6px;overflow:hidden;margin-top:8px}
   .progress-fill{height:100%;background:linear-gradient(90deg,var(--green),#16a34a);border-radius:6px;transition:width .4s}
-  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap}
-  .tab{background:none;color:var(--muted);border-bottom:3px solid transparent;border-radius:0;padding:10px 18px}
-  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  /* Main tabs */
+  .main-tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap}
+  .main-tab{background:none;color:var(--muted);border-bottom:3px solid transparent;border-radius:0;padding:10px 18px;font-size:.85rem}
+  .main-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  /* Sub tabs */
+  .sub-tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap}
+  .sub-tab{background:none;color:var(--muted);border-bottom:2px solid transparent;border-radius:0;padding:7px 14px;font-size:.8rem}
+  .sub-tab.active{color:#7dd3fc;border-bottom-color:#7dd3fc}
+
+  .section{display:none}.section.active{display:block}
+
+  /* Filters */
   .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
-  input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:8px 10px;font-size:.85rem;font-family:inherit}
+  input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 10px;font-size:.84rem;font-family:inherit}
   input::placeholder{color:var(--grey)}
   .search{flex:1;min-width:180px}
-  .table-wrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto}
-  table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:760px}
-  th,td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
-  th{background:var(--panel2);font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);position:sticky;top:0;cursor:pointer;white-space:nowrap}
+
+  /* Tables */
+  .table-wrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto;margin-bottom:20px}
+  table{width:100%;border-collapse:collapse;font-size:.83rem;min-width:640px}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{background:var(--panel2);font-size:.7rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);cursor:pointer;white-space:nowrap;position:sticky;top:0}
   th:hover{color:var(--text)}
   tr:hover td{background:rgba(255,255,255,.03)}
-  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:600;white-space:nowrap}
+
+  /* Badges */
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.7rem;font-weight:600;white-space:nowrap}
   .b-green{background:rgba(34,197,94,.18);color:#4ade80}
   .b-amber{background:rgba(245,158,11,.18);color:#fbbf24}
   .b-red{background:rgba(239,68,68,.18);color:#f87171}
   .b-grey{background:rgba(100,116,139,.22);color:#cbd5e1}
   .b-blue{background:rgba(59,130,246,.18);color:#60a5fa}
-  .prio-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
-  .row-actions{display:flex;gap:6px}
-  .empty{padding:40px;text-align:center;color:var(--muted)}
+  .b-purple{background:rgba(139,92,246,.18);color:#c4b5fd}
+  .b-teal{background:rgba(20,184,166,.18);color:#5eead4}
+
+  .prio-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+  .row-actions{display:flex;gap:5px}
+  .empty{padding:36px;text-align:center;color:var(--muted)}
   .overdue{color:#f87171;font-weight:600}
+  .low{color:#fbbf24;font-weight:600}
+  .critical{color:#f87171;font-weight:600}
+
+  /* Stock bar */
+  .qty-bar{height:4px;border-radius:2px;background:var(--line);margin-top:4px;width:72px}
+  .qty-fill{height:100%;border-radius:2px}
+
+  /* Section toolbar */
+  .s-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .s-toolbar h3{font-size:.95rem;font-weight:600;color:var(--text)}
+
+  /* Info note */
+  .info-note{font-size:.78rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:9px 12px;margin-bottom:14px}
+
+  /* Modal */
   .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow:auto}
   .modal-bg.open{display:flex}
-  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:100%;max-width:560px;padding:22px}
-  .modal h3{margin-bottom:16px}
-  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:100%;max-width:540px;padding:22px}
+  .modal h3{margin-bottom:16px;font-size:1rem}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
   .form-grid .full{grid-column:1/-1}
-  .field{display:flex;flex-direction:column;gap:5px}
-  .field label{font-size:.75rem;color:var(--muted)}
-  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-  footer{text-align:center;color:var(--grey);font-size:.75rem;padding:24px}
-  .hint{font-size:.78rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:10px 12px;margin-bottom:16px}
-  .banner{padding:12px 16px;font-size:.85rem;display:none}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:.72rem;color:var(--muted)}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+
+  /* Banner */
+  .banner{padding:11px 16px;font-size:.83rem;display:none}
   .banner.show{display:block}
   .banner.warn{background:#422006;color:#fcd34d;border-bottom:1px solid #92400e}
   .banner.ok{background:#052e16;color:#86efac;border-bottom:1px solid #166534}
   .banner.err{background:#450a0a;color:#fca5a5;border-bottom:1px solid #991b1b}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+
+  footer{text-align:center;color:var(--grey);font-size:.73rem;padding:24px}
   @media(max-width:600px){.form-grid{grid-template-columns:1fr}}
-  @media print{header .toolbar,.tabs,.filters,.row-actions,.modal-bg,.banner{display:none!important}body{background:#fff;color:#000}}
+  @media print{header .toolbar,.main-tabs,.sub-tabs,.filters,.row-actions,.modal-bg,.banner{display:none!important}body{background:#fff;color:#000}}
 </style>
 </head>
 <body>
@@ -82,7 +119,7 @@
   <h1>🏗️ MEP Project Follow-Up</h1>
   <input id="projName" class="proj-name" placeholder="Project name…">
   <div class="toolbar">
-    <span id="liveStatus" style="font-size:.78rem;color:#bae6fd"></span>
+    <span id="liveStatus" style="font-size:.76rem;color:#bae6fd"></span>
     <button class="btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
     <button class="btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
   </div>
@@ -91,33 +128,208 @@
 <div class="wrap">
   <div class="kpis" id="kpis"></div>
 
-  <div class="tabs">
-    <button class="tab active" data-tab="tasks" onclick="switchTab('tasks')">📋 Tasks / Progress</button>
-    <button class="tab" data-tab="submittals" onclick="switchTab('submittals')">📄 Submittals / Documents</button>
-    <button class="tab" data-tab="materials" onclick="switchTab('materials')">📦 Materials</button>
+  <!-- MAIN TABS -->
+  <div class="main-tabs">
+    <button class="main-tab active" data-main="tasks"       onclick="switchMain('tasks',this)">📋 Tasks</button>
+    <button class="main-tab"        data-main="documents"   onclick="switchMain('documents',this)">📄 Documents</button>
+    <button class="main-tab"        data-main="materials"   onclick="switchMain('materials',this)">📦 Materials</button>
+    <button class="main-tab"        data-main="store"       onclick="switchMain('store',this)">🏪 Store</button>
   </div>
 
-  <div class="hint" id="hint"></div>
-
-  <div class="filters">
-    <input class="search" id="search" placeholder="🔍 Search…" oninput="render()">
-    <select id="fStatus" onchange="render()"><option value="">All statuses</option></select>
-    <select id="fDiscipline" onchange="render()">
-      <option value="">All disciplines</option>
-      <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
-      <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
-    </select>
-    <button class="btn-primary" onclick="openModal()">+ Add</button>
+  <!-- ══════════ TASKS ══════════ -->
+  <div id="main-tasks" class="section active">
+    <div class="filters">
+      <input class="search" id="task-search" placeholder="🔍 Search…" oninput="renderTasks()">
+      <select id="task-status" onchange="renderTasks()">
+        <option value="">All statuses</option>
+        <option>Not Started</option><option>In Progress</option><option>On Hold</option><option>Completed</option>
+      </select>
+      <select id="task-disc" onchange="renderTasks()">
+        <option value="">All disciplines</option>
+        <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
+        <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
+      </select>
+      <button class="btn-primary" onclick="openModal('task')">+ Add task</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th onclick="sortTable('task','title')">Task / Activity</th>
+        <th onclick="sortTable('task','discipline')">Discipline</th>
+        <th onclick="sortTable('task','owner')">Responsible</th>
+        <th onclick="sortTable('task','priority')">Priority</th>
+        <th onclick="sortTable('task','progress')">% Done</th>
+        <th onclick="sortTable('task','due')">Due</th>
+        <th onclick="sortTable('task','status')">Status</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="task-body"></tbody>
+    </table></div>
   </div>
 
-  <div class="table-wrap">
-    <table id="table"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+  <!-- ══════════ DOCUMENTS ══════════ -->
+  <div id="main-documents" class="section">
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="submittal" onclick="switchSub('submittal',this)">📑 Submittals</button>
+      <button class="sub-tab"        data-sub="drawing"   onclick="switchSub('drawing',this)">📐 Drawings</button>
+      <button class="sub-tab"        data-sub="wir"       onclick="switchSub('wir',this)">🔍 WIR</button>
+      <button class="sub-tab"        data-sub="mir"       onclick="switchSub('mir',this)">📦 MIR</button>
+    </div>
+
+    <!-- Submittals -->
+    <div id="sub-submittal" class="section active">
+      <div class="filters">
+        <input class="search" id="submittal-search" placeholder="🔍 Search…" oninput="renderDoc('submittal')">
+        <select id="submittal-status" onchange="renderDoc('submittal')">
+          <option value="">All statuses</option>
+          <option>Draft</option><option>Submitted</option><option>Under Review</option>
+          <option>Approved</option><option>Approved w/ Comments</option><option>Rejected</option>
+        </select>
+        <button class="btn-primary" onclick="openModal('submittal')">+ Add</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ref no.</th><th>Title</th><th>Discipline</th><th>Type</th><th>Rev</th><th>Due</th><th>Status</th><th></th></tr></thead>
+        <tbody id="submittal-body"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Drawings -->
+    <div id="sub-drawing" class="section">
+      <div class="filters">
+        <input class="search" id="drawing-search" placeholder="🔍 Search…" oninput="renderDoc('drawing')">
+        <select id="drawing-status" onchange="renderDoc('drawing')">
+          <option value="">All statuses</option>
+          <option>Draft</option><option>Submitted</option><option>Under Review</option>
+          <option>Approved</option><option>For Construction</option><option>Superseded</option><option>Rejected</option>
+        </select>
+        <button class="btn-primary" onclick="openModal('drawing')">+ Add</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Drawing no.</th><th>Title</th><th>Discipline</th><th>Type</th><th>Rev</th><th>Scale</th><th>Issued</th><th>Status</th><th></th></tr></thead>
+        <tbody id="drawing-body"></tbody>
+      </table></div>
+    </div>
+
+    <!-- WIR -->
+    <div id="sub-wir" class="section">
+      <div class="filters">
+        <input class="search" id="wir-search" placeholder="🔍 Search…" oninput="renderDoc('wir')">
+        <select id="wir-status" onchange="renderDoc('wir')">
+          <option value="">All statuses</option>
+          <option>Draft</option><option>Submitted</option><option>Pending</option>
+          <option>Accepted</option><option>Conditional</option><option>Not Accepted</option><option>Closed</option>
+        </select>
+        <button class="btn-primary" onclick="openModal('wir')">+ New WIR</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>WIR no.</th><th>Activity</th><th>Discipline</th><th>Location</th><th>Inspection date</th><th>Inspector</th><th>Status</th><th></th></tr></thead>
+        <tbody id="wir-body"></tbody>
+      </table></div>
+    </div>
+
+    <!-- MIR -->
+    <div id="sub-mir" class="section">
+      <div class="filters">
+        <input class="search" id="mir-search" placeholder="🔍 Search…" oninput="renderDoc('mir')">
+        <select id="mir-status" onchange="renderDoc('mir')">
+          <option value="">All statuses</option>
+          <option>Draft</option><option>Submitted</option><option>Pending</option>
+          <option>Accepted</option><option>Conditional</option><option>Not Accepted</option><option>Closed</option>
+        </select>
+        <button class="btn-primary" onclick="openModal('mir')">+ New MIR</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>MIR no.</th><th>Material</th><th>Discipline</th><th>Supplier</th><th>Inspection date</th><th>Qty</th><th>Status</th><th></th></tr></thead>
+        <tbody id="mir-body"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ══════════ MATERIALS ══════════ -->
+  <div id="main-materials" class="section">
+    <div class="filters">
+      <input class="search" id="mat-search" placeholder="🔍 Search…" oninput="renderMat()">
+      <select id="mat-status" onchange="renderMat()">
+        <option value="">All statuses</option>
+        <option>Required</option><option>Approved</option><option>Ordered</option>
+        <option>Delivered</option><option>Installed</option><option>Rejected</option>
+      </select>
+      <select id="mat-disc" onchange="renderMat()">
+        <option value="">All disciplines</option>
+        <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
+        <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
+      </select>
+      <button class="btn-primary" onclick="openModal('material')">+ Add</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Material / Equipment</th><th>Discipline</th><th>Supplier</th><th>Qty</th><th>Est. Delivery</th><th>Status</th><th></th></tr></thead>
+      <tbody id="mat-body"></tbody>
+    </table></div>
+  </div>
+
+  <!-- ══════════ STORE ══════════ -->
+  <div id="main-store" class="section">
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="inventory" onclick="switchStoreSub('inventory',this)">📦 Inventory</button>
+      <button class="sub-tab"        data-sub="srequest"  onclick="switchStoreSub('srequest',this)">📋 Requests</button>
+      <button class="sub-tab"        data-sub="delivery"  onclick="switchStoreSub('delivery',this)">🚚 Deliveries</button>
+      <button class="sub-tab"        data-sub="used"      onclick="switchStoreSub('used',this)">🔨 Material Used</button>
+    </div>
+
+    <!-- Inventory -->
+    <div id="store-inventory" class="section active">
+      <div class="s-toolbar">
+        <h3>Materials in stock</h3>
+        <button class="btn-primary" onclick="openModal('inventory')">+ Add item</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Material</th><th>Category</th><th>On hand</th><th>Min stock</th><th>Location</th><th>Status</th><th></th></tr></thead>
+        <tbody id="inventory-body"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Requests -->
+    <div id="store-srequest" class="section">
+      <div class="s-toolbar">
+        <h3>Material requests</h3>
+        <button class="btn-primary" onclick="openModal('srequest')">+ New request</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Req no.</th><th>Material</th><th>Qty</th><th>Requested by</th><th>Required by</th><th>Purpose</th><th>Status</th><th></th></tr></thead>
+        <tbody id="srequest-body"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Deliveries -->
+    <div id="store-delivery" class="section">
+      <div class="s-toolbar">
+        <h3>Deliveries</h3>
+        <button class="btn-primary" onclick="openModal('delivery')">+ Log delivery</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Del no.</th><th>Material</th><th>Supplier</th><th>Qty received</th><th>Expected</th><th>Condition</th><th>Status</th><th></th></tr></thead>
+        <tbody id="delivery-body"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Material Used -->
+    <div id="store-used" class="section">
+      <div class="s-toolbar">
+        <h3>Material used</h3>
+        <button class="btn-primary" onclick="openModal('used')">+ Log usage</button>
+      </div>
+      <div class="info-note">⚡ Logging usage automatically deducts from inventory on hand.</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Material</th><th>Qty used</th><th>Area / Location</th><th>Used by</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="used-body"></tbody>
+      </table></div>
+    </div>
   </div>
 </div>
 
+<!-- MODAL -->
 <div class="modal-bg" id="modalBg">
   <div class="modal">
-    <h3 id="modalTitle">Add Item</h3>
+    <h3 id="modalTitle"></h3>
     <div class="form-grid" id="formFields"></div>
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeModal()">Cancel</button>
@@ -126,262 +338,574 @@
   </div>
 </div>
 
-<footer>MEP Follow-Up &amp; Monitoring · shared via Supabase · live updates for the whole team</footer>
+<footer>MEP Follow-Up & Monitoring · Supabase live sync</footer>
 
-<!-- Supabase client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* =================================================================
-   1) PASTE YOUR SUPABASE KEYS HERE  (see SETUP.md, step 2)
-   ================================================================= */
-const SUPABASE_URL      = "https://gkevsflbwajsovpmmhfy.supabase.co";   // your project URL
+/* ── SUPABASE KEYS ── */
+const SUPABASE_URL      = "https://gkevsflbwajsovpmmhfy.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZXZzZmxid2Fqc292cG1taGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODc2MTYsImV4cCI6MjA5NjU2MzYxNn0.BA8LYAL210ubAxDUTIeF68-FEd4PLgWJbBU78m9rstE";
-/* ================================================================= */
+const USING_SB = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+let sb = USING_SB ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-const USING_SUPABASE = SUPABASE_URL && SUPABASE_ANON_KEY;
-let sb = null;
-if (USING_SUPABASE) { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+/* ── CONSTANTS ── */
+const DISC = ["Mechanical","Electrical","Plumbing","Fire Fighting","HVAC","ELV / Low Voltage","General"];
+const CATS = ["Pipes & Fittings","HVAC Equipment","Electrical Cables","Electrical Equipment","Fire Protection","Valves & Accessories","Ductwork","Other"];
+const PRIO_C = {High:"var(--red)",Medium:"var(--amber)",Low:"var(--green)"};
+const STATUS_C = {
+  "Completed":"green","Approved":"green","Installed":"green","Delivered":"green","Stored":"green","Accepted":"green","For Construction":"green","Closed":"teal",
+  "In Progress":"blue","Under Review":"purple","Submitted":"blue","Ordered":"blue","Approved w/ Comments":"teal","Received":"blue","Inspected":"blue","Conditional":"amber",
+  "On Hold":"amber","Draft":"grey","Low Stock":"amber","Required":"amber","Pending":"grey","Preliminary":"amber",
+  "Not Started":"grey","Rejected":"red","Out of Stock":"red","Damaged":"red","Defective":"red","Not Accepted":"red","Superseded":"grey"
+};
 
-/* ---------- Schemas ---------- */
-const DISCIPLINES=["Mechanical","Electrical","Plumbing","Fire Fighting","HVAC","ELV / Low Voltage","General"];
-const SCHEMAS={
-  tasks:{
-    title:"Task / Activity",
-    statuses:["Not Started","In Progress","On Hold","Completed"],
-    hint:"Track every MEP activity: who owns it, planned vs. actual dates, and % complete. Overdue items are flagged in red.",
-    cols:[
-      {k:"title",label:"Task / Activity",type:"text",req:true},
-      {k:"discipline",label:"Discipline",type:"select",opts:DISCIPLINES},
-      {k:"owner",label:"Responsible",type:"text"},
-      {k:"location",label:"Area / Level",type:"text"},
-      {k:"priority",label:"Priority",type:"select",opts:["High","Medium","Low"]},
-      {k:"progress",label:"% Complete",type:"number"},
-      {k:"start",label:"Start Date",type:"date"},
-      {k:"due",label:"Due Date",type:"date"},
-      {k:"status",label:"Status",type:"select",opts:["Not Started","In Progress","On Hold","Completed"]},
-      {k:"notes",label:"Notes",type:"textarea",full:true}
-    ],
-    table:["title","discipline","owner","priority","progress","due","status"]
+/* ── FORM SCHEMAS ── */
+const FORMS = {
+  task:{
+    title:"Task",
+    fields:[
+      {k:"title",l:"Task / Activity",t:"text",req:true,full:true},
+      {k:"discipline",l:"Discipline",t:"select",opts:DISC},
+      {k:"owner",l:"Responsible",t:"text"},
+      {k:"location",l:"Area / Level",t:"text"},
+      {k:"priority",l:"Priority",t:"select",opts:["High","Medium","Low"]},
+      {k:"progress",l:"% Complete",t:"number"},
+      {k:"start",l:"Start Date",t:"date"},
+      {k:"due",l:"Due Date",t:"date"},
+      {k:"status",l:"Status",t:"select",opts:["Not Started","In Progress","On Hold","Completed"]},
+      {k:"notes",l:"Notes",t:"textarea",full:true}
+    ]
   },
-  submittals:{
-    title:"Submittal / Document",
-    statuses:["Draft","Submitted","Under Review","Approved","Approved w/ Comments","Rejected"],
-    hint:"Track drawings, material submittals, RFIs and approvals. Ref. no., revision and approval status at a glance.",
-    cols:[
-      {k:"ref",label:"Ref. No.",type:"text",req:true},
-      {k:"title",label:"Document Title",type:"text",req:true},
-      {k:"discipline",label:"Discipline",type:"select",opts:DISCIPLINES},
-      {k:"type",label:"Type",type:"select",opts:["Shop Drawing","Material Submittal","Method Statement","RFI","Datasheet","As-Built","Other"]},
-      {k:"rev",label:"Revision",type:"text"},
-      {k:"submitted",label:"Submitted Date",type:"date"},
-      {k:"due",label:"Response Due",type:"date"},
-      {k:"status",label:"Status",type:"select",opts:["Draft","Submitted","Under Review","Approved","Approved w/ Comments","Rejected"]},
-      {k:"notes",label:"Remarks",type:"textarea",full:true}
-    ],
-    table:["ref","title","discipline","type","rev","due","status"]
+  submittal:{
+    title:"Submittal",
+    fields:[
+      {k:"ref",l:"Ref no.",t:"text",req:true},
+      {k:"title",l:"Document title",t:"text",req:true,full:true},
+      {k:"discipline",l:"Discipline",t:"select",opts:DISC},
+      {k:"type",l:"Type",t:"select",opts:["Shop Drawing","Material Submittal","Method Statement","RFI","Datasheet","As-Built","Other"]},
+      {k:"rev",l:"Revision",t:"text"},
+      {k:"submitted",l:"Submitted date",t:"date"},
+      {k:"due",l:"Response due",t:"date"},
+      {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Under Review","Approved","Approved w/ Comments","Rejected"]},
+      {k:"notes",l:"Remarks",t:"textarea",full:true}
+    ]
   },
-  materials:{
+  drawing:{
+    title:"Drawing",
+    fields:[
+      {k:"drawingNo",l:"Drawing no.",t:"text",req:true},
+      {k:"title",l:"Drawing title",t:"text",req:true,full:true},
+      {k:"discipline",l:"Discipline",t:"select",opts:DISC},
+      {k:"drawingType",l:"Drawing type",t:"select",opts:["Layout Plan","Elevation","Section","Detail","Schematic","Single Line","Riser","Isometric","General Arrangement","Other"]},
+      {k:"rev",l:"Revision",t:"text"},
+      {k:"scale",l:"Scale",t:"text"},
+      {k:"issuedBy",l:"Issued by",t:"text"},
+      {k:"issuedDate",l:"Issued date",t:"date"},
+      {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Under Review","Approved","Approved w/ Comments","For Construction","Superseded","Rejected"]},
+      {k:"notes",l:"Notes",t:"textarea",full:true}
+    ]
+  },
+  wir:{
+    title:"WIR",
+    fields:[
+      {k:"wirNo",l:"WIR no.",t:"text",req:true},
+      {k:"activity",l:"Activity / work",t:"text",req:true,full:true},
+      {k:"discipline",l:"Discipline",t:"select",opts:DISC},
+      {k:"location",l:"Location / area",t:"text",full:true},
+      {k:"drawingRef",l:"Drawing reference",t:"text"},
+      {k:"contractor",l:"Contractor",t:"text"},
+      {k:"inspector",l:"Inspector",t:"text"},
+      {k:"inspectionDate",l:"Inspection date",t:"date"},
+      {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Pending","Accepted","Conditional","Not Accepted","Closed"]},
+      {k:"comments",l:"Inspector comments",t:"textarea",full:true}
+    ]
+  },
+  mir:{
+    title:"MIR",
+    fields:[
+      {k:"mirNo",l:"MIR no.",t:"text",req:true},
+      {k:"material",l:"Material / equipment",t:"text",req:true,full:true},
+      {k:"discipline",l:"Discipline",t:"select",opts:DISC},
+      {k:"supplier",l:"Supplier",t:"text"},
+      {k:"qty",l:"Quantity",t:"text"},
+      {k:"deliveryNote",l:"Delivery note no.",t:"text"},
+      {k:"inspector",l:"Inspector",t:"text"},
+      {k:"inspectionDate",l:"Inspection date",t:"date"},
+      {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Pending","Accepted","Conditional","Not Accepted","Closed"]},
+      {k:"comments",l:"Inspector comments",t:"textarea",full:true}
+    ]
+  },
+  material:{
     title:"Material / Equipment",
-    statuses:["Required","Approved","Ordered","Delivered","Installed","Rejected"],
-    hint:"Track procurement and delivery: approval, order, delivery and installation status of each material or equipment.",
-    cols:[
-      {k:"title",label:"Material / Equipment",type:"text",req:true},
-      {k:"discipline",label:"Discipline",type:"select",opts:DISCIPLINES},
-      {k:"supplier",label:"Supplier",type:"text"},
-      {k:"qty",label:"Qty",type:"text"},
-      {k:"location",label:"For Area",type:"text"},
-      {k:"orderDate",label:"Order Date",type:"date"},
-      {k:"eta",label:"Expected Delivery",type:"date"},
-      {k:"status",label:"Status",type:"select",opts:["Required","Approved","Ordered","Delivered","Installed","Rejected"]},
-      {k:"notes",label:"Notes",type:"textarea",full:true}
-    ],
-    table:["title","discipline","supplier","qty","eta","status"]
+    fields:[
+      {k:"title",l:"Material / Equipment",t:"text",req:true,full:true},
+      {k:"discipline",l:"Discipline",t:"select",opts:DISC},
+      {k:"supplier",l:"Supplier",t:"text"},
+      {k:"qty",l:"Qty",t:"text"},
+      {k:"location",l:"For Area",t:"text"},
+      {k:"orderDate",l:"Order Date",t:"date"},
+      {k:"eta",l:"Est. Delivery",t:"date"},
+      {k:"status",l:"Status",t:"select",opts:["Required","Approved","Ordered","Delivered","Installed","Rejected"]},
+      {k:"notes",l:"Notes",t:"textarea",full:true}
+    ]
+  },
+  inventory:{
+    title:"Store item",
+    fields:[
+      {k:"material",l:"Material name",t:"text",req:true,full:true},
+      {k:"category",l:"Category",t:"select",opts:CATS},
+      {k:"unit",l:"Unit (m, pcs, kg…)",t:"text"},
+      {k:"qtyOnHand",l:"Qty on hand",t:"number"},
+      {k:"minStock",l:"Min stock level",t:"number"},
+      {k:"location",l:"Storage location",t:"text"},
+      {k:"status",l:"Status",t:"select",opts:["In Stock","Low Stock","Out of Stock"]},
+      {k:"notes",l:"Notes",t:"textarea",full:true}
+    ]
+  },
+  srequest:{
+    title:"Material request",
+    fields:[
+      {k:"reqNo",l:"Request no.",t:"text"},
+      {k:"material",l:"Material",t:"text",req:true,full:true},
+      {k:"qty",l:"Qty required",t:"number"},
+      {k:"unit",l:"Unit",t:"text"},
+      {k:"requestedBy",l:"Requested by",t:"text"},
+      {k:"requiredBy",l:"Required by",t:"date"},
+      {k:"purpose",l:"Purpose / location",t:"text",full:true},
+      {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Approved","Rejected","Completed"]},
+      {k:"notes",l:"Notes",t:"textarea",full:true}
+    ]
+  },
+  delivery:{
+    title:"Delivery",
+    fields:[
+      {k:"deliveryNo",l:"Delivery no.",t:"text"},
+      {k:"material",l:"Material",t:"text",req:true,full:true},
+      {k:"supplier",l:"Supplier",t:"text"},
+      {k:"qtyReceived",l:"Qty received",t:"number"},
+      {k:"expectedDate",l:"Expected date",t:"date"},
+      {k:"receivedDate",l:"Received date",t:"date"},
+      {k:"condition",l:"Condition",t:"select",opts:["","Good","Damaged","Partial","Defective"]},
+      {k:"storedLocation",l:"Stored location",t:"text"},
+      {k:"status",l:"Status",t:"select",opts:["Pending","Received","Inspected","Stored","Rejected"]},
+      {k:"notes",l:"Notes",t:"textarea",full:true}
+    ]
+  },
+  used:{
+    title:"Material used",
+    fields:[
+      {k:"date",l:"Date",t:"date",req:true},
+      {k:"material",l:"Material",t:"text",req:true,full:true},
+      {k:"qtyUsed",l:"Qty used",t:"number",req:true},
+      {k:"area",l:"Area / location",t:"text",full:true},
+      {k:"usedBy",l:"Used by",t:"text"},
+      {k:"notes",l:"Notes",t:"textarea",full:true}
+    ]
   }
 };
-const STATUS_COLOR={
-  "Completed":"green","Approved":"green","Installed":"green","Delivered":"green",
-  "In Progress":"blue","Under Review":"blue","Submitted":"blue","Ordered":"blue","Approved w/ Comments":"blue",
-  "On Hold":"amber","Draft":"amber","Required":"amber",
-  "Not Started":"grey","Rejected":"red"
-};
-const PRIO_COLOR={High:"var(--red)",Medium:"var(--amber)",Low:"var(--green)"};
 
-/* ---------- State ---------- */
-let state={tasks:[],submittals:[],materials:[]};
-let current="tasks", editId=null, sortKey=null, sortDir=1;
-const LKEY="mep_followup_demo";
+/* ── STATE ── */
+let DB = {task:[],submittal:[],drawing:[],wir:[],mir:[],material:[],inventory:[],srequest:[],delivery:[],used:[]};
+let nextId = {};
+Object.keys(DB).forEach(k=>nextId[k]=1);
+let editId=null, editKind=null;
+const LKEY = "mep_v3";
 
-/* ---------- Data layer (Supabase OR local demo) ---------- */
+/* ── PERSIST ── */
 async function loadAll(){
-  if(USING_SUPABASE){
+  if(USING_SB){
     try{
       const {data,error}=await sb.from('mep_items').select('*').order('created_at',{ascending:true});
-      if(error) throw error;
-      state={tasks:[],submittals:[],materials:[]};
-      for(const row of data){ if(state[row.kind]) state[row.kind].push({id:row.id,...row.data}); }
-      banner('ok',`<span class="dot" style="background:#22c55e"></span>Connected to shared database — changes sync live for everyone.`);
+      if(error)throw error;
+      Object.keys(DB).forEach(k=>DB[k]=[]);
+      data.forEach(r=>{if(DB[r.kind])DB[r.kind].push({id:r.id,...r.data});});
+      banner('ok','<span class="dot" style="background:#22c55e"></span>Live — syncing with team.');
       document.getElementById('liveStatus').innerHTML='● live';
-    }catch(e){
-      banner('err','Could not reach the database. Check your keys / table setup in SETUP.md. Details: '+(e.message||e));
-    }
-  }else{
-    // Demo / offline mode: localStorage so the file still works before setup
-    try{const s=JSON.parse(localStorage.getItem(LKEY));if(s)state=s;}catch(e){}
-    if(!state.tasks.length) seedDemo();
-    banner('warn','⚙ Demo mode — data is stored only in <b>this browser</b>. Open SETUP.md and paste your Supabase keys to share live with your team.');
+    }catch(e){banner('err','DB error: '+(e.message||e));}
+  } else {
+    try{const s=JSON.parse(localStorage.getItem(LKEY));if(s&&s.task)Object.assign(DB,s);}catch(e){}
+    if(!DB.task.length) seed();
+    banner('warn','⚙ Demo mode — data stored locally.');
     document.getElementById('liveStatus').textContent='demo';
   }
-  render();
+  renderAll();
 }
-function persistDemo(){ if(!USING_SUPABASE) localStorage.setItem(LKEY,JSON.stringify(state)); }
+function save(){if(!USING_SB)localStorage.setItem(LKEY,JSON.stringify(DB));}
 
-async function addItem(kind,fields){
-  if(USING_SUPABASE){
-    const {error}=await sb.from('mep_items').insert({kind,data:fields});
-    if(error){alert('Save failed: '+error.message);return;}
-    await loadAll();
-  }else{ fields.id=rid(); state[kind].push(fields); persistDemo(); render(); }
+async function dbAdd(kind,obj){
+  if(USING_SB){const{error}=await sb.from('mep_items').insert({kind,data:obj});if(error){alert(error.message);return;}await loadAll();}
+  else{obj.id=nextId[kind]++;DB[kind].push(obj);save();renderAll();}
 }
-async function updateItem(kind,rowId,fields){
-  if(USING_SUPABASE){
-    const {error}=await sb.from('mep_items').update({data:fields,updated_at:new Date().toISOString()}).eq('id',rowId);
-    if(error){alert('Update failed: '+error.message);return;}
-    await loadAll();
-  }else{ const i=state[kind].findIndex(x=>x.id===rowId); fields.id=rowId; state[kind][i]=fields; persistDemo(); render(); }
+async function dbUpdate(kind,id,obj){
+  if(USING_SB){const{error}=await sb.from('mep_items').update({data:obj,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return;}await loadAll();}
+  else{const i=DB[kind].findIndex(x=>x.id===id);obj.id=id;DB[kind][i]=obj;save();renderAll();}
 }
-async function deleteItem(kind,rowId){
-  if(USING_SUPABASE){
-    const {error}=await sb.from('mep_items').delete().eq('id',rowId);
-    if(error){alert('Delete failed: '+error.message);return;}
-    await loadAll();
-  }else{ state[kind]=state[kind].filter(x=>x.id!==rowId); persistDemo(); render(); }
+async function dbDel(kind,id){
+  if(USING_SB){const{error}=await sb.from('mep_items').delete().eq('id',id);if(error){alert(error.message);return;}await loadAll();}
+  else{DB[kind]=DB[kind].filter(x=>x.id!==id);save();renderAll();}
 }
-function rid(){return Math.random().toString(36).slice(2,9);}
 
-function seedDemo(){
-  state.tasks=[
-    {id:rid(),title:"Install AHU-01 in Level 3 plant room",discipline:"HVAC",owner:"M. Khan",location:"L3 Plant",priority:"High",progress:60,start:"2026-05-10",due:"2026-06-05",status:"In Progress",notes:"Awaiting duct connection."},
-    {id:rid(),title:"Cable tray routing - main riser",discipline:"Electrical",owner:"A. Rahman",location:"Riser 1",priority:"High",progress:100,start:"2026-04-20",due:"2026-05-25",status:"Completed",notes:""},
-    {id:rid(),title:"Chilled water piping - 2nd floor",discipline:"Mechanical",owner:"S. Ali",location:"L2",priority:"Medium",progress:30,start:"2026-05-15",due:"2026-06-03",status:"In Progress",notes:"Pressure test pending."}
+/* ── SEED ── */
+function seed(){
+  let n=1;
+  const r=()=>n++;
+  DB.task=[
+    {id:r(),title:"Install AHU-01 – Level 3",discipline:"HVAC",owner:"M. Khan",location:"L3 Plant",priority:"High",progress:60,start:"2026-05-10",due:"2026-06-05",status:"In Progress",notes:"Awaiting duct connection."},
+    {id:r(),title:"Cable tray – main riser",discipline:"Electrical",owner:"A. Rahman",location:"Riser 1",priority:"High",progress:100,start:"2026-04-20",due:"2026-05-25",status:"Completed",notes:""},
+    {id:r(),title:"CHW piping – 2nd floor",discipline:"Mechanical",owner:"S. Ali",location:"L2",priority:"Medium",progress:30,start:"2026-05-15",due:"2026-06-03",status:"In Progress",notes:"Pressure test pending."}
   ];
-  state.submittals=[
-    {id:rid(),ref:"MS-EL-014",title:"LED Light Fixtures - Type A",discipline:"Electrical",type:"Material Submittal",rev:"R1",submitted:"2026-05-18",due:"2026-06-01",status:"Approved",notes:""},
-    {id:rid(),ref:"SD-HV-007",title:"AHU Ductwork Shop Drawings",discipline:"HVAC",type:"Shop Drawing",rev:"R2",submitted:"2026-05-28",due:"2026-06-10",status:"Under Review",notes:"Consultant reviewing."}
+  DB.submittal=[
+    {id:r(),ref:"MS-EL-014",title:"LED fixtures type A",discipline:"Electrical",type:"Material Submittal",rev:"R1",submitted:"2026-05-18",due:"2026-06-01",status:"Approved",notes:""},
+    {id:r(),ref:"SD-HV-007",title:"AHU ductwork shop drawings",discipline:"HVAC",type:"Shop Drawing",rev:"R2",submitted:"2026-05-28",due:"2026-06-10",status:"Under Review",notes:"Consultant reviewing."}
   ];
-  state.materials=[
-    {id:rid(),title:"VRF Outdoor Units (8HP)",discipline:"HVAC",supplier:"CoolTech",qty:"4",location:"Roof",orderDate:"2026-05-05",eta:"2026-06-20",status:"Ordered",notes:""},
-    {id:rid(),title:"PPR Pipes 110mm",discipline:"Plumbing",supplier:"AquaSupply",qty:"200 m",location:"L1-L3",orderDate:"",eta:"",status:"Required",notes:"Pending approval."}
+  DB.drawing=[
+    {id:r(),drawingNo:"M-LP-001",title:"Mechanical layout – level 1",discipline:"Mechanical",drawingType:"Layout Plan",rev:"B",scale:"1:100",issuedBy:"Design Team",issuedDate:"2026-05-10",status:"For Construction",notes:""},
+    {id:r(),drawingNo:"E-SLD-001",title:"Main LV single line diagram",discipline:"Electrical",drawingType:"Single Line",rev:"A",scale:"NTS",issuedBy:"Design Team",issuedDate:"2026-05-20",status:"Approved",notes:""}
   ];
-  persistDemo();
+  DB.wir=[
+    {id:r(),wirNo:"WIR-ME-001",activity:"CHW piping pressure test – L2",discipline:"Mechanical",location:"Level 2 Zone A",drawingRef:"M-LP-002",contractor:"Al Rashid MEP",inspector:"Eng. Karimi",inspectionDate:"2026-06-05",status:"Accepted",comments:"Pressure held at 10 bar for 2 hrs."},
+    {id:r(),wirNo:"WIR-EL-002",activity:"Cable tray installation – riser",discipline:"Electrical",location:"Riser shaft R-01",drawingRef:"E-CT-001",contractor:"Al Rashid MEP",inspector:"Eng. Hassan",inspectionDate:"2026-06-08",status:"Pending",comments:""}
+  ];
+  DB.mir=[
+    {id:r(),mirNo:"MIR-HV-001",material:"VRF outdoor units 8HP",discipline:"HVAC",supplier:"CoolTech",qty:"4 units",deliveryNote:"DN-2026-112",inspector:"Eng. Karimi",inspectionDate:"2026-06-14",status:"Accepted",comments:"All units undamaged."},
+    {id:r(),mirNo:"MIR-PL-002",material:"PPR pipes 110mm",discipline:"Plumbing",supplier:"AquaSupply",qty:"200 m",deliveryNote:"DN-2026-118",inspector:"",inspectionDate:"2026-06-20",status:"Pending",comments:""}
+  ];
+  DB.material=[
+    {id:r(),title:"VRF outdoor units (8HP)",discipline:"HVAC",supplier:"CoolTech",qty:"4",location:"Roof",orderDate:"2026-05-05",eta:"2026-06-20",status:"Ordered",notes:""},
+    {id:r(),title:"PPR pipes 110mm",discipline:"Plumbing",supplier:"AquaSupply",qty:"200 m",location:"L1–L3",orderDate:"",eta:"",status:"Required",notes:"Pending approval."}
+  ];
+  DB.inventory=[
+    {id:r(),material:"Copper pipes 20mm",category:"Pipes & Fittings",unit:"m",qtyOnHand:150,minStock:50,location:"A-Rack-02",status:"In Stock",notes:""},
+    {id:r(),material:"PPR pipes 110mm",category:"Pipes & Fittings",unit:"m",qtyOnHand:35,minStock:100,location:"A-Rack-01",status:"Low Stock",notes:"Reorder soon"},
+    {id:r(),material:"Cable 4mm² red",category:"Electrical Cables",unit:"m",qtyOnHand:500,minStock:200,location:"B-Roll-03",status:"In Stock",notes:""}
+  ];
+  DB.srequest=[
+    {id:r(),reqNo:"REQ-001",material:"Copper pipes 20mm",qty:200,unit:"m",requestedBy:"S. Ali",requiredBy:"2026-06-15",purpose:"CHW – L2/L3",status:"Approved",notes:""},
+    {id:r(),reqNo:"REQ-002",material:"Insulation foam 50mm",qty:100,unit:"m²",requestedBy:"M. Khan",requiredBy:"2026-06-20",purpose:"AHU insulation",status:"Submitted",notes:""}
+  ];
+  DB.delivery=[
+    {id:r(),deliveryNo:"DEL-001",material:"VRF outdoor unit 8HP",supplier:"CoolTech",qtyReceived:4,expectedDate:"2026-06-15",receivedDate:"2026-06-14",condition:"Good",storedLocation:"Roof-A",status:"Stored",notes:""},
+    {id:r(),deliveryNo:"DEL-002",material:"LED fixtures type-A",supplier:"LumixCorp",qtyReceived:"",expectedDate:"2026-06-20",receivedDate:"",condition:"",storedLocation:"",status:"Pending",notes:""}
+  ];
+  DB.used=[
+    {id:r(),date:"2026-06-07",material:"Copper pipes 20mm",qtyUsed:20,area:"Level 2 – CHW",usedBy:"S. Ali",notes:"Chilled water loop"},
+    {id:r(),date:"2026-06-08",material:"Cable 4mm² red",qtyUsed:50,area:"Riser shaft",usedBy:"A. Rahman",notes:"Main distribution"}
+  ];
+  Object.keys(nextId).forEach(k=>nextId[k]=DB[k].length?Math.max(...DB[k].map(x=>x.id))+1:1);
+  save();
 }
 
-function banner(type,html){
-  const b=document.getElementById('banner');
-  b.className='banner show '+type; b.innerHTML=html;
+/* ── HELPERS ── */
+function badge(v){const c=STATUS_C[v]||'grey';return `<span class="badge b-${c}">${v||'–'}</span>`;}
+function today(){return new Date().toISOString().slice(0,10);}
+function isOverdue(date,status){
+  if(!date||!status)return false;
+  const done=["Completed","Approved","For Construction","Accepted","Closed","Installed","Stored","Approved w/ Comments"].includes(status);
+  return date<today()&&!done;
 }
+function dateCell(date,status){
+  if(!date)return '–';
+  return isOverdue(date,status)?`<span class="overdue">${date} ⚠</span>`:date;
+}
+function autoStockStatus(qty,min){
+  qty=Number(qty);min=Number(min);
+  if(qty<=0)return'Out of Stock';
+  if(qty<=min)return'Low Stock';
+  return'In Stock';
+}
+function banner(type,html){const b=document.getElementById('banner');b.className='banner show '+type;b.innerHTML=html;}
 
-/* ---------- Rendering ---------- */
-function switchTab(t){
-  current=t;sortKey=null;
-  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  const fs=document.getElementById('fStatus');
-  fs.innerHTML='<option value="">All statuses</option>'+SCHEMAS[t].statuses.map(s=>`<option>${s}</option>`).join('');
-  document.getElementById('search').value='';document.getElementById('fDiscipline').value='';
-  document.getElementById('hint').textContent=SCHEMAS[t].hint;
-  render();
-}
-function todayStr(){return new Date().toISOString().slice(0,10);}
-function isOverdue(it){
-  const done=["Completed","Approved","Installed","Delivered","Approved w/ Comments"].includes(it.status);
-  return it.due && it.due<todayStr() && !done;
-}
-function computeKpis(){
-  const t=state.tasks;
+/* ── KPIs ── */
+function renderKpis(){
+  const t=DB.task;
   const done=t.filter(x=>x.status==="Completed").length;
   const avg=t.length?Math.round(t.reduce((a,x)=>a+(+x.progress||0),0)/t.length):0;
-  const overdue=[...state.tasks,...state.submittals,...state.materials].filter(isOverdue).length;
-  const pendSub=state.submittals.filter(x=>!["Approved","Approved w/ Comments","Rejected"].includes(x.status)).length;
-  const matDelivered=state.materials.filter(x=>["Delivered","Installed"].includes(x.status)).length;
+  const lowStock=DB.inventory.filter(x=>Number(x.qtyOnHand)<=Number(x.minStock)).length;
+  const pendDel=DB.delivery.filter(x=>x.status==="Pending").length;
+  const pendSub=DB.submittal.filter(x=>!["Approved","Approved w/ Comments","Rejected"].includes(x.status)).length;
+  const openWIR=DB.wir.filter(x=>!["Accepted","Closed"].includes(x.status)).length;
   document.getElementById('kpis').innerHTML=`
-   <div class="kpi"><div class="label">Overall Progress</div><div class="val">${avg}%</div>
-     <div class="progress-track"><div class="progress-fill" style="width:${avg}%"></div></div></div>
-   <div class="kpi"><div class="label">Tasks Completed</div><div class="val">${done}/${t.length}</div><div class="sub">activities closed</div></div>
-   <div class="kpi"><div class="label">Open Submittals</div><div class="val">${pendSub}</div><div class="sub">awaiting approval</div></div>
-   <div class="kpi"><div class="label">Materials On Site</div><div class="val">${matDelivered}/${state.materials.length}</div><div class="sub">delivered / installed</div></div>
-   <div class="kpi"><div class="label">⚠ Overdue Items</div><div class="val" style="color:${overdue?'var(--red)':'var(--green)'}">${overdue}</div><div class="sub">across all modules</div></div>`;
+    <div class="kpi"><div class="label">Overall progress</div><div class="val">${avg}%</div>
+      <div class="progress-track"><div class="progress-fill" style="width:${avg}%"></div></div></div>
+    <div class="kpi"><div class="label">Tasks completed</div><div class="val">${done}/${t.length}</div><div class="sub">activities closed</div></div>
+    <div class="kpi"><div class="label">Open submittals</div><div class="val">${pendSub}</div><div class="sub">awaiting approval</div></div>
+    <div class="kpi"><div class="label">Open WIR / MIR</div><div class="val">${openWIR}</div><div class="sub">pending inspection</div></div>
+    <div class="kpi"><div class="label">⚠ Low stock</div><div class="val" style="color:${lowStock?'var(--amber)':'var(--green)'}">${lowStock}</div><div class="sub">items need reorder</div></div>
+    <div class="kpi"><div class="label">🚚 Pending deliveries</div><div class="val" style="color:${pendDel?'var(--blue)':'var(--green)'}">${pendDel}</div><div class="sub">in transit</div></div>`;
 }
-function render(){
-  computeKpis();
-  const sc=SCHEMAS[current];
-  document.getElementById('thead').innerHTML='<tr>'+sc.table.map(k=>{
-    const c=sc.cols.find(x=>x.k===k);
-    const arrow=sortKey===k?(sortDir>0?' ▲':' ▼'):'';
-    return `<th onclick="sortBy('${k}')">${c.label}${arrow}</th>`;
-  }).join('')+'<th>Actions</th></tr>';
 
-  const q=document.getElementById('search').value.toLowerCase();
-  const fs=document.getElementById('fStatus').value;
-  const fd=document.getElementById('fDiscipline').value;
-  let rows=state[current].filter(it=>{
-    const text=Object.values(it).join(' ').toLowerCase();
-    return (!q||text.includes(q))&&(!fs||it.status===fs)&&(!fd||it.discipline===fd);
+/* ── TAB SWITCHES ── */
+function switchMain(id,btn){
+  document.querySelectorAll('.section[id^="main-"]').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('main-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+function switchSub(id,btn){
+  document.querySelectorAll('#main-documents .section[id^="sub-"]').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.main-tabs ~ #main-documents .sub-tab, #main-documents .sub-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sub-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+function switchStoreSub(id,btn){
+  document.querySelectorAll('#main-store .section[id^="store-"]').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('#main-store .sub-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('store-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ── RENDER TASKS ── */
+function renderTasks(){
+  const q=document.getElementById('task-search').value.toLowerCase();
+  const fs=document.getElementById('task-status').value;
+  const fd=document.getElementById('task-disc').value;
+  let rows=DB.task.filter(it=>{
+    const txt=Object.values(it).join(' ').toLowerCase();
+    return(!q||txt.includes(q))&&(!fs||it.status===fs)&&(!fd||it.discipline===fd);
   });
-  if(sortKey){rows.sort((a,b)=>((a[sortKey]||'')>(b[sortKey]||'')?1:-1)*sortDir);}
-
-  const tbody=document.getElementById('tbody');
-  if(!rows.length){tbody.innerHTML=`<tr><td colspan="${sc.table.length+1}" class="empty">No items. Click “+ Add” to create one.</td></tr>`;return;}
-  tbody.innerHTML=rows.map(it=>'<tr>'+sc.table.map(k=>{
-    let v=it[k]??'';
-    if(k==='status')v=`<span class="badge b-${STATUS_COLOR[v]||'grey'}">${v||'-'}</span>`;
-    else if(k==='priority'&&v)v=`<span class="prio-dot" style="background:${PRIO_COLOR[v]}"></span>${v}`;
-    else if(k==='progress')v=(v||0)+'%';
-    else if(k==='due'&&v){v=isOverdue(it)?`<span class="overdue">${v} ⚠</span>`:v;}
-    return `<td>${v||'<span style="color:var(--grey)">–</span>'}</td>`;
-  }).join('')+`<td><div class="row-actions">
-     <button class="btn-ghost btn-sm" onclick="openModal('${it.id}')">Edit</button>
-     <button class="btn-danger btn-sm" onclick="del('${it.id}')">✕</button></div></td></tr>`).join('');
+  const b=document.getElementById('task-body');
+  if(!rows.length){b.innerHTML='<tr><td colspan="8" class="empty">No tasks. Click "+ Add task".</td></tr>';return;}
+  b.innerHTML=rows.map(it=>`<tr>
+    <td>${it.title}</td>
+    <td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td>
+    <td>${it.owner||'–'}</td>
+    <td><span class="prio-dot" style="background:${PRIO_C[it.priority]||'var(--grey)'}"></span>${it.priority||'–'}</td>
+    <td>${it.progress||0}%</td>
+    <td>${dateCell(it.due,it.status)}</td>
+    <td>${badge(it.status)}</td>
+    <td><div class="row-actions">
+      <button class="btn-ghost btn-sm" onclick="openModal('task',${it.id})">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('task',${it.id})">✕</button>
+    </div></td>
+  </tr>`).join('');
 }
-function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();}
 
-/* ---------- CRUD UI ---------- */
-function openModal(eid){
-  editId=eid||null;
-  const sc=SCHEMAS[current];
-  const item=eid?state[current].find(x=>x.id===eid):{};
-  document.getElementById('modalTitle').textContent=(eid?'Edit ':'Add ')+sc.title;
-  document.getElementById('formFields').innerHTML=sc.cols.map(c=>{
-    const val=item[c.k]??'';
-    let input;
-    if(c.type==='select')input=`<select id="f_${c.k}">${c.opts.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
-    else if(c.type==='textarea')input=`<textarea id="f_${c.k}" rows="2">${val}</textarea>`;
-    else input=`<input id="f_${c.k}" type="${c.type}" value="${val}" ${c.type==='number'?'min="0" max="100"':''}>`;
-    return `<div class="field ${c.full?'full':''}"><label>${c.label}${c.req?' *':''}</label>${input}</div>`;
+/* ── RENDER DOCS ── */
+const DOC_COLS={
+  submittal:(it)=>`<td>${it.ref}</td><td>${it.title}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.type||'–'}</td><td>${it.rev||'–'}</td><td>${dateCell(it.due,it.status)}</td><td>${badge(it.status)}</td>`,
+  drawing:(it)=>`<td>${it.drawingNo}</td><td>${it.title}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.drawingType||'–'}</td><td>${it.rev||'–'}</td><td>${it.scale||'–'}</td><td>${it.issuedDate||'–'}</td><td>${badge(it.status)}</td>`,
+  wir:(it)=>`<td>${it.wirNo}</td><td>${it.activity}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.location||'–'}</td><td>${dateCell(it.inspectionDate,it.status)}</td><td>${it.inspector||'–'}</td><td>${badge(it.status)}</td>`,
+  mir:(it)=>`<td>${it.mirNo}</td><td>${it.material}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.supplier||'–'}</td><td>${dateCell(it.inspectionDate,it.status)}</td><td>${it.qty||'–'}</td><td>${badge(it.status)}</td>`
+};
+const DOC_SPAN={submittal:7,drawing:8,wir:7,mir:7};
+function renderDoc(kind){
+  const q=document.getElementById(kind+'-search').value.toLowerCase();
+  const fs=document.getElementById(kind+'-status').value;
+  let rows=DB[kind].filter(it=>{
+    const txt=Object.values(it).join(' ').toLowerCase();
+    return(!q||txt.includes(q))&&(!fs||it.status===fs);
+  });
+  const b=document.getElementById(kind+'-body');
+  if(!rows.length){b.innerHTML=`<tr><td colspan="${DOC_SPAN[kind]+1}" class="empty">No entries yet.</td></tr>`;return;}
+  b.innerHTML=rows.map(it=>`<tr>${DOC_COLS[kind](it)}<td><div class="row-actions">
+    <button class="btn-ghost btn-sm" onclick="openModal('${kind}',${it.id})">Edit</button>
+    <button class="btn-danger btn-sm" onclick="del('${kind}',${it.id})">✕</button>
+  </div></td></tr>`).join('');
+}
+
+/* ── RENDER MATERIALS ── */
+function renderMat(){
+  const q=document.getElementById('mat-search').value.toLowerCase();
+  const fs=document.getElementById('mat-status').value;
+  const fd=document.getElementById('mat-disc').value;
+  let rows=DB.material.filter(it=>{
+    const txt=Object.values(it).join(' ').toLowerCase();
+    return(!q||txt.includes(q))&&(!fs||it.status===fs)&&(!fd||it.discipline===fd);
+  });
+  const b=document.getElementById('mat-body');
+  if(!rows.length){b.innerHTML='<tr><td colspan="7" class="empty">No materials.</td></tr>';return;}
+  b.innerHTML=rows.map(it=>`<tr>
+    <td>${it.title}</td>
+    <td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td>
+    <td>${it.supplier||'–'}</td>
+    <td>${it.qty||'–'}</td>
+    <td>${dateCell(it.eta,it.status)}</td>
+    <td>${badge(it.status)}</td>
+    <td><div class="row-actions">
+      <button class="btn-ghost btn-sm" onclick="openModal('material',${it.id})">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('material',${it.id})">✕</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+/* ── RENDER STORE ── */
+function renderInventory(){
+  const b=document.getElementById('inventory-body');
+  if(!DB.inventory.length){b.innerHTML='<tr><td colspan="7" class="empty">No items in store.</td></tr>';return;}
+  b.innerHTML=DB.inventory.map(it=>{
+    const q=Number(it.qtyOnHand),m=Number(it.minStock);
+    const pct=m>0?Math.min(100,Math.round(q/m*100)):100;
+    const bc=q===0?'#ef4444':q<=m?'#f59e0b':'#22c55e';
+    const cls=q===0?'critical':q<=m?'low':'';
+    return `<tr>
+      <td><strong>${it.material}</strong></td>
+      <td><span style="color:var(--muted);font-size:.8rem">${it.category||'–'}</span></td>
+      <td>
+        <span class="${cls}">${q} ${it.unit||''}</span>
+        <div class="qty-bar"><div class="qty-fill" style="width:${pct}%;background:${bc}"></div></div>
+      </td>
+      <td style="color:var(--muted)">${m} ${it.unit||''}</td>
+      <td style="color:var(--muted);font-size:.8rem">${it.location||'–'}</td>
+      <td>${badge(it.status)}</td>
+      <td><div class="row-actions">
+        <button class="btn-ghost btn-sm" onclick="openModal('inventory',${it.id})">Edit</button>
+        <button class="btn-danger btn-sm" onclick="del('inventory',${it.id})">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+function renderSrequest(){
+  const b=document.getElementById('srequest-body');
+  if(!DB.srequest.length){b.innerHTML='<tr><td colspan="8" class="empty">No requests.</td></tr>';return;}
+  b.innerHTML=DB.srequest.map(it=>`<tr>
+    <td style="color:var(--muted);font-size:.8rem">${it.reqNo||'–'}</td>
+    <td>${it.material}</td>
+    <td>${it.qty} ${it.unit||''}</td>
+    <td>${it.requestedBy||'–'}</td>
+    <td>${dateCell(it.requiredBy,it.status)}</td>
+    <td style="color:var(--muted);font-size:.8rem">${it.purpose||'–'}</td>
+    <td>${badge(it.status)}</td>
+    <td><div class="row-actions">
+      <button class="btn-ghost btn-sm" onclick="openModal('srequest',${it.id})">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('srequest',${it.id})">✕</button>
+    </div></td>
+  </tr>`).join('');
+}
+function renderDelivery(){
+  const b=document.getElementById('delivery-body');
+  if(!DB.delivery.length){b.innerHTML='<tr><td colspan="8" class="empty">No deliveries.</td></tr>';return;}
+  b.innerHTML=DB.delivery.map(it=>`<tr>
+    <td style="color:var(--muted);font-size:.8rem">${it.deliveryNo||'–'}</td>
+    <td>${it.material}</td>
+    <td>${it.supplier||'–'}</td>
+    <td>${it.qtyReceived||'–'}</td>
+    <td>${dateCell(it.expectedDate,it.status)}</td>
+    <td>${it.condition?badge(it.condition):'–'}</td>
+    <td>${badge(it.status)}</td>
+    <td><div class="row-actions">
+      <button class="btn-ghost btn-sm" onclick="openModal('delivery',${it.id})">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('delivery',${it.id})">✕</button>
+    </div></td>
+  </tr>`).join('');
+}
+function renderUsed(){
+  const b=document.getElementById('used-body');
+  if(!DB.used.length){b.innerHTML='<tr><td colspan="7" class="empty">No usage logged.</td></tr>';return;}
+  b.innerHTML=DB.used.map(it=>`<tr>
+    <td style="color:var(--muted);font-size:.8rem">${it.date||'–'}</td>
+    <td>${it.material}</td>
+    <td style="color:var(--red);font-weight:600">−${it.qtyUsed}</td>
+    <td>${it.area||'–'}</td>
+    <td style="color:var(--muted)">${it.usedBy||'–'}</td>
+    <td style="color:var(--muted);font-size:.8rem">${it.notes||'–'}</td>
+    <td><div class="row-actions">
+      <button class="btn-ghost btn-sm" onclick="openModal('used',${it.id})">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('used',${it.id})">✕</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function renderAll(){
+  renderKpis();
+  renderTasks();
+  ['submittal','drawing','wir','mir'].forEach(renderDoc);
+  renderMat();
+  renderInventory();renderSrequest();renderDelivery();renderUsed();
+}
+
+/* ── MODAL ── */
+let editKindForSave=null;
+function openModal(kind,id){
+  editKindForSave=kind;
+  editId=id||null;
+  const form=FORMS[kind];
+  const item=id?DB[kind].find(x=>x.id===id):{};
+
+  // For used: material is a dropdown from inventory
+  const fields=form.fields.map(f=>{
+    if(f.k==='material'&&kind==='used')
+      return{...f,t:'select',opts:DB.inventory.map(i=>i.material)};
+    return f;
+  });
+
+  document.getElementById('modalTitle').textContent=(id?'Edit ':'New ')+form.title;
+  document.getElementById('formFields').innerHTML=fields.map(f=>{
+    const val=item[f.k]??'';
+    let inp;
+    if(f.t==='select') inp=`<select id="f_${f.k}">${(f.opts||[]).map(o=>`<option${String(val)===String(o)?' selected':''}>${o}</option>`).join('')}</select>`;
+    else if(f.t==='textarea') inp=`<textarea id="f_${f.k}" rows="2">${val}</textarea>`;
+    else inp=`<input id="f_${f.k}" type="${f.t}" value="${val}">`;
+    return`<div class="field${f.full?' full':''}""><label>${f.l}${f.req?' *':''}</label>${inp}</div>`;
   }).join('');
   document.getElementById('modalBg').classList.add('open');
 }
-function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;editKindForSave=null;}
+
 async function saveItem(){
-  const sc=SCHEMAS[current];const obj={};
-  for(const c of sc.cols){obj[c.k]=document.getElementById('f_'+c.k).value.trim();}
-  const miss=sc.cols.filter(c=>c.req&&!obj[c.k]);
-  if(miss.length){alert('Please fill: '+miss.map(c=>c.label).join(', '));return;}
-  const btn=document.getElementById('saveBtn');btn.textContent='Saving…';btn.disabled=true;
-  const kind=current, ed=editId;
+  const kind=editKindForSave;
+  const form=FORMS[kind];
+  const obj={};
+  form.fields.forEach(f=>{const el=document.getElementById('f_'+f.k);if(el)obj[f.k]=el.value.trim();});
+  const miss=form.fields.filter(f=>f.req&&!obj[f.k]);
+  if(miss.length){alert('Required: '+miss.map(f=>f.l).join(', '));return;}
+
+  const btn=document.getElementById('saveBtn');
+  btn.textContent='Saving…';btn.disabled=true;
+  const ed=editId;
+
+  // Material used: deduct/restore inventory
+  if(kind==='used'){
+    if(ed){
+      const old=DB.used.find(x=>x.id===ed);
+      if(old){
+        const inv=DB.inventory.find(i=>i.material===old.material);
+        if(inv){inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand)+Number(old.qtyUsed));inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);}
+      }
+    }
+    const inv=DB.inventory.find(i=>i.material===obj.material);
+    if(inv){
+      inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand)-Number(obj.qtyUsed));
+      inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
+      if(!USING_SB) save();
+    }
+  }
+
   closeModal();
-  if(ed) await updateItem(kind,ed,obj); else await addItem(kind,obj);
+  if(ed) await dbUpdate(kind,ed,obj); else await dbAdd(kind,obj);
   btn.textContent='Save';btn.disabled=false;
 }
-async function del(eid){ if(!confirm('Delete this item?'))return; await deleteItem(current,eid); }
 
-/* ---------- Init + live sync ---------- */
+async function del(kind,id){
+  if(!confirm('Delete this entry?'))return;
+  // Restore inventory if deleting used entry
+  if(kind==='used'){
+    const entry=DB.used.find(x=>x.id===id);
+    if(entry){
+      const inv=DB.inventory.find(i=>i.material===entry.material);
+      if(inv){inv.qtyOnHand=Number(inv.qtyOnHand)+Number(entry.qtyUsed);inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);if(!USING_SB)save();}
+    }
+  }
+  await dbDel(kind,id);
+}
+
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
-switchTab('tasks');
-loadAll();
-if(USING_SUPABASE){
+
+/* ── SORT (tasks only) ── */
+let sortK=null,sortD=1;
+function sortTable(kind,k){
+  if(sortK===k)sortD*=-1;else{sortK=k;sortD=1;}
+  DB[kind].sort((a,b)=>((a[k]||'')>(b[k]||'')?1:-1)*sortD);
+  renderTasks();
+}
+
+/* ── LIVE SYNC ── */
+if(USING_SB){
   sb.channel('mep_live')
     .on('postgres_changes',{event:'*',schema:'public',table:'mep_items'},()=>loadAll())
     .subscribe();
 }
+
+loadAll();
 </script>
 </body>
 </html>
