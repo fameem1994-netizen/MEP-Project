@@ -183,6 +183,12 @@
           <option>Draft</option><option>Submitted</option><option>Under Review</option>
           <option>Approved</option><option>Approved w/ Comments</option><option>Rejected</option>
         </select>
+        <input class="search" id="submittal-title" placeholder="🔍 Filter by title…" oninput="renderDoc('submittal')">
+        <select id="submittal-disc" onchange="renderDoc('submittal')">
+          <option value="">All disciplines</option>
+          <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
+          <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
+        </select>
         <button class="btn-primary" onclick="openModal('submittal')">+ Add</button>
       </div>
       <div class="table-wrap"><table>
@@ -198,6 +204,12 @@
           <option value="">All statuses</option>
           <option>Draft</option><option>Submitted</option><option>Under Review</option>
           <option>Approved</option><option>For Construction</option><option>Superseded</option><option>Rejected</option>
+        </select>
+        <input class="search" id="drawing-title" placeholder="🔍 Filter by title…" oninput="renderDoc('drawing')">
+        <select id="drawing-disc" onchange="renderDoc('drawing')">
+          <option value="">All disciplines</option>
+          <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
+          <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
         </select>
         <button class="btn-primary" onclick="openModal('drawing')">+ Add</button>
       </div>
@@ -215,6 +227,12 @@
           <option>Draft</option><option>Submitted</option><option>Pending</option>
           <option>Accepted</option><option>Conditional</option><option>Not Accepted</option><option>Closed</option>
         </select>
+        <input class="search" id="wir-title" placeholder="🔍 Filter by activity…" oninput="renderDoc('wir')">
+        <select id="wir-disc" onchange="renderDoc('wir')">
+          <option value="">All disciplines</option>
+          <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
+          <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
+        </select>
         <button class="btn-primary" onclick="openModal('wir')">+ New WIR</button>
       </div>
       <div class="table-wrap"><table>
@@ -230,6 +248,12 @@
           <option value="">All statuses</option>
           <option>Draft</option><option>Submitted</option><option>Pending</option>
           <option>Accepted</option><option>Conditional</option><option>Not Accepted</option><option>Closed</option>
+        </select>
+        <input class="search" id="mir-title" placeholder="🔍 Filter by material…" oninput="renderDoc('mir')">
+        <select id="mir-disc" onchange="renderDoc('mir')">
+          <option value="">All disciplines</option>
+          <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
+          <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
         </select>
         <button class="btn-primary" onclick="openModal('mir')">+ New MIR</button>
       </div>
@@ -646,10 +670,14 @@ const DOC_COLS={
   mir:(it)=>`<td>${it.mirNo}</td><td>${it.material}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.supplier||'–'}</td><td>${dateCell(it.inspectionDate,it.status)}</td><td>${it.qty||'–'}</td><td>${badge(it.status)}</td>`
 };
 const DOC_SPAN={submittal:7,drawing:8,wir:7,mir:7};
+const DOC_TITLE_FIELD={submittal:'title',drawing:'title',wir:'activity',mir:'material'};
 function renderDoc(kind){
   const fs=document.getElementById(kind+'-status').value;
+  const fdEl=document.getElementById(kind+'-disc');const fd=fdEl?fdEl.value:'';
+  const ftEl=document.getElementById(kind+'-title');const ft=ftEl?ftEl.value.toLowerCase().trim():'';
+  const tfield=DOC_TITLE_FIELD[kind];
   let rows=DB[kind].filter(it=>{
-    return(!fs||it.status===fs);
+    return(!fs||it.status===fs)&&(!fd||it.discipline===fd)&&(!ft||String(it[tfield]||'').toLowerCase().includes(ft));
   });
   const b=document.getElementById(kind+'-body');
   if(!rows.length){b.innerHTML=`<tr><td colspan="${DOC_SPAN[kind]+1}" class="empty">No entries yet.</td></tr>`;return;}
@@ -861,6 +889,22 @@ function getActiveKind(){
   }
   return'task';
 }
+// Excel stores dates as serial numbers (e.g. 46166) — convert to YYYY-MM-DD
+function excelToISO(v){
+  if(v==null||v==='')return'';
+  if(v instanceof Date&&!isNaN(v)){
+    return v.getUTCFullYear()+'-'+String(v.getUTCMonth()+1).padStart(2,'0')+'-'+String(v.getUTCDate()).padStart(2,'0');
+  }
+  const str=String(v).trim();
+  if(/^\d+(\.\d+)?$/.test(str)){
+    const n=Number(str);
+    if(n>1&&n<100000){
+      const d=new Date(Math.round((n-25569)*86400000));
+      if(!isNaN(d))return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
+    }
+  }
+  return str;
+}
 function exportExcel(){
   const kind=getActiveKind();
   const form=FORMS[kind];
@@ -881,6 +925,7 @@ async function importExcelFile(e){
   const form=FORMS[kind];
   const labelToKey={};form.fields.forEach(f=>labelToKey[f.l.toLowerCase().trim()]=f.k);
   const keySet=new Set(form.fields.map(f=>f.k));
+  const keyType={};form.fields.forEach(f=>keyType[f.k]=f.t);
   const reader=new FileReader();
   reader.onload=async(ev)=>{
     let rows;
@@ -897,7 +942,9 @@ async function importExcelFile(e){
       const obj={};
       headers.forEach((h,ci)=>{
         const key=labelToKey[h]||(keySet.has(h)?h:null);
-        if(key)obj[key]=r[ci]!=null?String(r[ci]).trim():'';
+        if(!key)return;
+        const raw=r[ci];
+        obj[key]=keyType[key]==='date'?excelToISO(raw):(raw!=null?String(raw).trim():'');
       });
       if(Object.values(obj).some(v=>v!==''))records.push(obj);
     }
