@@ -573,37 +573,22 @@ function autoStockStatus(qty,min){
 function banner(type,html){const b=document.getElementById('banner');b.className='banner show '+type;b.innerHTML=html;}
 
 /* ── KPIs ── */
-const PENDING_APPROVAL = {
-  submittal:(s)=>!["Approved","Approved w/ Comments","Rejected"].includes(s),
-  drawing:(s)=>!["Approved","For Construction","Superseded","Rejected"].includes(s),
-  wir:(s)=>!["Accepted","Closed","Not Accepted"].includes(s),
-  mir:(s)=>!["Accepted","Closed","Not Accepted"].includes(s),
-  srequest:(s)=>!["Approved","Rejected","Completed"].includes(s)
-};
-function pendingApprovalBreakdown(){
-  const b={};let total=0;
-  ['submittal','drawing','wir','mir','srequest'].forEach(k=>{
-    const n=DB[k].filter(x=>PENDING_APPROVAL[k](x.status)).length;
-    b[k]=n;total+=n;
-  });
-  b.total=total;return b;
-}
 function renderKpis(){
   const t=DB.task;
   const done=t.filter(x=>x.status==="Completed").length;
   const avg=t.length?Math.round(t.reduce((a,x)=>a+(+x.progress||0),0)/t.length):0;
   const lowStock=DB.inventory.filter(x=>Number(x.qtyOnHand)<=Number(x.minStock)).length;
   const pendDel=DB.delivery.filter(x=>x.status==="Pending").length;
-  const openWIR=DB.wir.filter(x=>!["Accepted","Closed"].includes(x.status)).length;
-  const pa=pendingApprovalBreakdown();
+  const openSub=DB.submittal.filter(x=>!["Approved","Approved w/ Comments","Rejected"].includes(x.status)).length;
+  const openDwg=DB.drawing.filter(x=>!["Approved","For Construction","Superseded","Rejected"].includes(x.status)).length;
+  const openWIR=DB.wir.filter(x=>!["Accepted","Closed","Not Accepted"].includes(x.status)).length
+              +DB.mir.filter(x=>!["Accepted","Closed","Not Accepted"].includes(x.status)).length;
   document.getElementById('kpis').innerHTML=`
-    <div class="kpi" style="border-color:${pa.total?'#92400e':'var(--line)'};background:${pa.total?'#3a200a':'var(--panel)'}">
-      <div class="label">⏳ Pending approvals</div>
-      <div class="val" style="color:${pa.total?'var(--amber)':'var(--green)'}">${pa.total}</div>
-      <div class="sub">Subm ${pa.submittal} · Dwg ${pa.drawing} · WIR ${pa.wir} · MIR ${pa.mir} · Req ${pa.srequest}</div></div>
     <div class="kpi"><div class="label">Overall progress</div><div class="val">${avg}%</div>
       <div class="progress-track"><div class="progress-fill" style="width:${avg}%"></div></div></div>
     <div class="kpi"><div class="label">Tasks completed</div><div class="val">${done}/${t.length}</div><div class="sub">activities closed</div></div>
+    <div class="kpi"><div class="label">Open submittals</div><div class="val">${openSub}</div><div class="sub">awaiting approval</div></div>
+    <div class="kpi"><div class="label">Open drawings</div><div class="val">${openDwg}</div><div class="sub">awaiting approval</div></div>
     <div class="kpi"><div class="label">Open WIR / MIR</div><div class="val">${openWIR}</div><div class="sub">pending inspection</div></div>
     <div class="kpi"><div class="label">⚠ Low stock</div><div class="val" style="color:${lowStock?'var(--amber)':'var(--green)'}">${lowStock}</div><div class="sub">items need reorder</div></div>
     <div class="kpi"><div class="label">🚚 Pending deliveries</div><div class="val" style="color:${pendDel?'var(--blue)':'var(--green)'}">${pendDel}</div><div class="sub">in transit</div></div>`;
