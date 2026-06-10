@@ -123,7 +123,7 @@
     <button class="btn-ghost btn-sm" onclick="document.getElementById('xlsxInput').click()">⬆ Import</button>
     <input type="file" id="xlsxInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelFile(event)">
     <button class="btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
-    <button class="btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+    <button class="btn-ghost btn-sm" onclick="printCurrentReport()">🖨 Print</button>
   </div>
 </header>
 
@@ -135,6 +135,7 @@
     <button class="main-tab active" data-main="tasks"       onclick="switchMain('tasks',this)">📋 Tasks</button>
     <button class="main-tab"        data-main="documents"   onclick="switchMain('documents',this)">📄 Documents</button>
     <button class="main-tab"        data-main="store"       onclick="switchMain('store',this)">🏪 Store</button>
+    <button class="main-tab"        data-main="attendance"  onclick="switchMain('attendance',this)">🕒 Attendance</button>
   </div>
 
   <!-- ══════════ TASKS ══════════ -->
@@ -279,8 +280,9 @@
         <h3>Materials in stock</h3>
         <button class="btn-primary" onclick="openModal('inventory')">+ Add item</button>
       </div>
+      <div class="info-note">📌 <b>Remaining to deliver</b> is calculated from open material requests minus received / inspected / stored delivery quantities.</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Material</th><th>Category</th><th>On hand</th><th>Min stock</th><th>Location</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Material</th><th>Category</th><th>On hand</th><th>Remaining to deliver</th><th>Min stock</th><th>Location</th><th>Status</th><th></th></tr></thead>
         <tbody id="inventory-body"></tbody>
       </table></div>
     </div>
@@ -292,7 +294,7 @@
         <button class="btn-primary" onclick="openModal('srequest')">+ New request</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Req no.</th><th>Material</th><th>Qty</th><th>Requested by</th><th>Required by</th><th>Purpose</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Req no.</th><th>Material</th><th>Ordered Qty</th><th>Delivered Qty</th><th>Remaining Qty</th><th>Delivery Status</th><th>Requested by</th><th>Required by</th><th>Purpose</th><th>Request Status</th><th></th></tr></thead>
         <tbody id="srequest-body"></tbody>
       </table></div>
     </div>
@@ -303,9 +305,9 @@
         <h3>Deliveries</h3>
         <button class="btn-primary" onclick="openModal('delivery')">+ Log delivery</button>
       </div>
-      <div class="info-note">⚡ Marking a delivery <b>Received</b>, <b>Inspected</b> or <b>Stored</b> automatically adds its quantity to Inventory.</div>
+      <div class="info-note">⚡ Marking a delivery <b>Received</b>, <b>Inspected</b> or <b>Stored</b> automatically adds its quantity to Inventory. Add the related <b>Req no.</b> to track fully / partially delivered quantities.</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Del no.</th><th>Material</th><th>Supplier</th><th>Qty received</th><th>Expected</th><th>Condition</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Del no.</th><th>Req no.</th><th>Material</th><th>Supplier</th><th>Qty received</th><th>Expected</th><th>Condition</th><th>Status</th><th></th></tr></thead>
         <tbody id="delivery-body"></tbody>
       </table></div>
     </div>
@@ -323,6 +325,24 @@
       </table></div>
     </div>
   </div>
+
+  <!-- ══════════ ATTENDANCE ══════════ -->
+  <div id="main-attendance" class="section">
+    <div class="filters">
+      <input id="attendance-date-filter" type="date" onchange="renderAttendance()">
+      <select id="attendance-status-filter" onchange="renderAttendance()">
+        <option value="">All statuses</option>
+        <option>Present</option><option>Absent</option><option>Late</option><option>Half Day</option><option>Leave</option>
+      </select>
+      <input class="search" id="attendance-name-filter" placeholder="🔍 Filter by employee no. / name / trade / location…" oninput="renderAttendance()">
+      <button class="btn-primary" onclick="openModal('attendance')">+ Add attendance</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Emp. No.</th><th>Name</th><th>Trade / Team</th><th>Working Location</th><th>In</th><th>Out</th><th>Hours</th><th>Status</th><th>Remarks</th><th></th></tr></thead>
+      <tbody id="attendance-body"></tbody>
+    </table></div>
+  </div>
+
 </div>
 
 <!-- MODAL -->
@@ -337,16 +357,39 @@
   </div>
 </div>
 
-<footer>MEP Follow-Up & Monitoring · Supabase live sync</footer>
+<footer>MEP Follow-Up & Monitoring · Google Sheets sync</footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-/* ── SUPABASE KEYS ── */
-const SUPABASE_URL      = "https://gkevsflbwajsovpmmhfy.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZXZzZmxid2Fqc292cG1taGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODc2MTYsImV4cCI6MjA5NjU2MzYxNn0.BA8LYAL210ubAxDUTIeF68-FEd4PLgWJbBU78m9rstE";
-const USING_SB = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
-let sb = USING_SB ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+/* ── GOOGLE SHEETS WEB APP URL ──
+   1) Create the Google Apps Script backend from the supplied Code.gs file.
+   2) Deploy it as a Web app.
+   3) Paste the /exec URL below.
+*/
+const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzMv_Mzfyftqgdfe_lyh1SCyG90giqWi6DcjMZyAjjJgdIhoHkU5LxZfRymbmq8AJlL/exec";
+const USING_GS = GOOGLE_SHEET_API_URL && !GOOGLE_SHEET_API_URL.includes('PASTE_GOOGLE_APPS_SCRIPT');
+
+function gsJsonp(params={}){
+  return new Promise((resolve,reject)=>{
+    const cb='gs_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const script=document.createElement('script');
+    const qs=new URLSearchParams({...params,callback:cb,cacheBust:Date.now()}).toString();
+    const timer=setTimeout(()=>{cleanup();reject(new Error('Google Sheets read timeout'));},15000);
+    function cleanup(){clearTimeout(timer);delete window[cb];script.remove();}
+    window[cb]=(data)=>{cleanup();resolve(data);};
+    script.onerror=()=>{cleanup();reject(new Error('Could not load Google Sheets data'));};
+    script.src=GOOGLE_SHEET_API_URL+(GOOGLE_SHEET_API_URL.includes('?')?'&':'?')+qs;
+    document.head.appendChild(script);
+  });
+}
+
+async function gsPost(action,payload={}){
+  if(!USING_GS)return;
+  const body=new URLSearchParams({payload:JSON.stringify({action,...payload})});
+  await fetch(GOOGLE_SHEET_API_URL,{method:'POST',mode:'no-cors',body});
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 /* ── CONSTANTS ── */
 const DISC = ["Mechanical","Electrical","Plumbing","Fire Fighting","HVAC","ELV / Low Voltage","General"];
@@ -355,8 +398,8 @@ const PRIO_C = {High:"var(--red)",Medium:"var(--amber)",Low:"var(--green)"};
 const STATUS_C = {
   "Completed":"green","Approved":"green","Installed":"green","Delivered":"green","Stored":"green","Accepted":"green","For Construction":"green","Closed":"teal",
   "In Progress":"blue","Under Review":"purple","Submitted":"blue","Ordered":"blue","Approved w/ Comments":"teal","Received":"blue","Inspected":"blue","Conditional":"amber",
-  "On Hold":"amber","Draft":"grey","Low Stock":"amber","Required":"amber","Pending":"grey","Preliminary":"amber",
-  "Not Started":"grey","Rejected":"red","Out of Stock":"red","Damaged":"red","Defective":"red","Not Accepted":"red","Superseded":"grey"
+  "On Hold":"amber","Draft":"grey","Low Stock":"amber","Required":"amber","Pending":"grey","Preliminary":"amber","Partially Delivered":"amber",
+  "Not Started":"grey","Present":"green","Late":"amber","Half Day":"amber","Leave":"blue","Absent":"red","Not Delivered":"red","Rejected":"red","Out of Stock":"red","Damaged":"red","Defective":"red","Not Accepted":"red","Superseded":"grey","Fully Delivered":"green"
 };
 
 /* ── FORM SCHEMAS ── */
@@ -466,6 +509,7 @@ const FORMS = {
     title:"Delivery",
     fields:[
       {k:"deliveryNo",l:"Delivery no.",t:"text"},
+      {k:"reqNo",l:"Related request no.",t:"text"},
       {k:"material",l:"Material",t:"text",req:true,full:true},
       {k:"supplier",l:"Supplier",t:"text"},
       {k:"qtyReceived",l:"Qty received",t:"number"},
@@ -487,11 +531,26 @@ const FORMS = {
       {k:"usedBy",l:"Used by",t:"text"},
       {k:"notes",l:"Notes",t:"textarea",full:true}
     ]
+  },
+  attendance:{
+    title:"Attendance",
+    fields:[
+      {k:"date",l:"Date",t:"date",req:true},
+      {k:"empNo",l:"Employee no.",t:"text"},
+      {k:"name",l:"Name",t:"text",req:true,full:true},
+      {k:"trade",l:"Trade / Team",t:"text"},
+      {k:"workLocation",l:"Working location",t:"text",full:true},
+      {k:"timeIn",l:"Time in",t:"time"},
+      {k:"timeOut",l:"Time out",t:"time"},
+      {k:"hours",l:"Hours",t:"number"},
+      {k:"status",l:"Status",t:"select",opts:["Present","Absent","Late","Half Day","Leave"]},
+      {k:"remarks",l:"Remarks",t:"textarea",full:true}
+    ]
   }
 };
 
 /* ── STATE ── */
-let DB = {task:[],submittal:[],drawing:[],wir:[],mir:[],inventory:[],srequest:[],delivery:[],used:[]};
+let DB = {task:[],submittal:[],drawing:[],wir:[],mir:[],inventory:[],srequest:[],delivery:[],used:[],attendance:[]};
 let nextId = {};
 Object.keys(DB).forEach(k=>nextId[k]=1);
 let editId=null;
@@ -499,35 +558,47 @@ const LKEY = "mep_v3";
 
 /* ── PERSIST ── */
 async function loadAll(){
-  if(USING_SB){
+  if(USING_GS){
     try{
-      const {data,error}=await sb.from('mep_items').select('*').order('created_at',{ascending:true});
-      if(error)throw error;
+      const res=await gsJsonp({action:'read'});
+      if(!res||res.ok===false)throw new Error((res&&res.error)||'Google Sheets read failed');
       Object.keys(DB).forEach(k=>DB[k]=[]);
-      data.forEach(r=>{if(DB[r.kind])DB[r.kind].push({id:r.id,...r.data});});
-      banner('ok','<span class="dot" style="background:#22c55e"></span>Live — syncing with team.');
-      document.getElementById('liveStatus').innerHTML='● live';
-    }catch(e){banner('err','DB error: '+(e.message||e));}
+      (res.data||[]).forEach(r=>{
+        if(DB[r.kind]){
+          const rowData=typeof r.data==='string'?JSON.parse(r.data||'{}'):(r.data||{});
+          DB[r.kind].push({id:r.id,...rowData});
+        }
+      });
+      Object.keys(nextId).forEach(k=>{
+        const nums=DB[k].map(x=>Number(x.id)).filter(Number.isFinite);
+        nextId[k]=nums.length?Math.max(...nums)+1:1;
+      });
+      banner('ok','<span class="dot" style="background:#22c55e"></span>Live — syncing with Google Sheets.');
+      document.getElementById('liveStatus').innerHTML='● Google Sheets';
+    }catch(e){
+      banner('err','Google Sheets error: '+(e.message||e));
+      document.getElementById('liveStatus').textContent='offline';
+    }
   } else {
     try{const s=JSON.parse(localStorage.getItem(LKEY));if(s&&s.task)Object.assign(DB,s);}catch(e){}
     if(!DB.task.length) seed();
-    banner('warn','⚙ Demo mode — data stored locally.');
+    banner('warn','⚙ Demo mode — paste your Google Apps Script URL to sync online.');
     document.getElementById('liveStatus').textContent='demo';
   }
   renderAll();
 }
-function save(){if(!USING_SB)localStorage.setItem(LKEY,JSON.stringify(DB));}
+function save(){if(!USING_GS)localStorage.setItem(LKEY,JSON.stringify(DB));}
 
 async function dbAdd(kind,obj){
-  if(USING_SB){const{error}=await sb.from('mep_items').insert({kind,data:obj});if(error){alert(error.message);return;}await loadAll();}
+  if(USING_GS){await gsPost('add',{kind,data:obj});await sleep(700);await loadAll();}
   else{obj.id=nextId[kind]++;DB[kind].push(obj);save();renderAll();}
 }
 async function dbUpdate(kind,id,obj){
-  if(USING_SB){const{error}=await sb.from('mep_items').update({data:obj,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return;}await loadAll();}
+  if(USING_GS){await gsPost('update',{id,data:obj});await sleep(700);await loadAll();}
   else{const i=DB[kind].findIndex(x=>String(x.id)===String(id));obj.id=id;DB[kind][i]=obj;save();renderAll();}
 }
 async function dbDel(kind,id){
-  if(USING_SB){const{error}=await sb.from('mep_items').delete().eq('id',id);if(error){alert(error.message);return;}await loadAll();}
+  if(USING_GS){await gsPost('delete',{id});await sleep(700);await loadAll();}
   else{DB[kind]=DB[kind].filter(x=>String(x.id)!==String(id));save();renderAll();}
 }
 
@@ -566,12 +637,16 @@ function seed(){
     {id:r(),reqNo:"REQ-002",material:"Insulation foam 50mm",qty:100,unit:"m²",requestedBy:"M. Khan",requiredBy:"2026-06-20",purpose:"AHU insulation",status:"Submitted",notes:""}
   ];
   DB.delivery=[
-    {id:r(),deliveryNo:"DEL-001",material:"VRF outdoor unit 8HP",supplier:"CoolTech",qtyReceived:4,expectedDate:"2026-06-15",receivedDate:"2026-06-14",condition:"Good",storedLocation:"Roof-A",status:"Stored",notes:""},
-    {id:r(),deliveryNo:"DEL-002",material:"LED fixtures type-A",supplier:"LumixCorp",qtyReceived:"",expectedDate:"2026-06-20",receivedDate:"",condition:"",storedLocation:"",status:"Pending",notes:""}
+    {id:r(),deliveryNo:"DEL-001",reqNo:"REQ-001",material:"Copper pipes 20mm",supplier:"CoolTech",qtyReceived:80,expectedDate:"2026-06-15",receivedDate:"2026-06-14",condition:"Good",storedLocation:"A-Rack-02",status:"Stored",notes:"Partial delivery against REQ-001"},
+    {id:r(),deliveryNo:"DEL-002",reqNo:"",material:"LED fixtures type-A",supplier:"LumixCorp",qtyReceived:"",expectedDate:"2026-06-20",receivedDate:"",condition:"",storedLocation:"",status:"Pending",notes:""}
   ];
   DB.used=[
     {id:r(),date:"2026-06-07",material:"Copper pipes 20mm",qtyUsed:20,area:"Level 2 – CHW",usedBy:"S. Ali",notes:"Chilled water loop"},
     {id:r(),date:"2026-06-08",material:"Cable 4mm² red",qtyUsed:50,area:"Riser shaft",usedBy:"A. Rahman",notes:"Main distribution"}
+  ];
+  DB.attendance=[
+    {id:r(),date:"2026-06-10",empNo:"EMP-001",name:"A. Rahman",trade:"Electrical",workLocation:"Riser shaft R-01",timeIn:"07:00",timeOut:"17:00",hours:10,status:"Present",remarks:""},
+    {id:r(),date:"2026-06-10",empNo:"EMP-002",name:"S. Ali",trade:"Mechanical",workLocation:"Level 2 – CHW",timeIn:"07:30",timeOut:"17:00",hours:9.5,status:"Late",remarks:"30 minutes late"}
   ];
   Object.keys(nextId).forEach(k=>nextId[k]=DB[k].length?Math.max(...DB[k].map(x=>x.id))+1:1);
   save();
@@ -603,7 +678,14 @@ function renderKpis(){
   const done=t.filter(x=>x.status==="Completed").length;
   const avg=t.length?Math.round(t.reduce((a,x)=>a+(+x.progress||0),0)/t.length):0;
   const lowStock=DB.inventory.filter(x=>Number(x.qtyOnHand)<=Number(x.minStock)).length;
-  const pendDel=DB.delivery.filter(x=>x.status==="Pending").length;
+  // Count material request lines that still have quantity remaining to deliver.
+  // This is better than only counting delivery records with status "Pending",
+  // because a request can be pending delivery even before any delivery entry is created.
+  const OPEN_DELIVERY_REQUEST_STATES=["Submitted","Approved","Ordered"];
+  const pendDel=DB.srequest.filter(req =>
+    OPEN_DELIVERY_REQUEST_STATES.includes(req.status) && deliveryStatusForRequest(req).remaining > 0
+  ).length;
+  const todayAttendance=DB.attendance.filter(x=>x.date===today()&&x.status==="Present").length;
   const openSub=DB.submittal.filter(x=>!["Approved","Approved w/ Comments","Rejected"].includes(x.status)).length;
   const openDwg=DB.drawing.filter(x=>!["Approved","For Construction","Superseded","Rejected"].includes(x.status)).length;
   const openWIR=DB.wir.filter(x=>!["Accepted","Closed","Not Accepted"].includes(x.status)).length
@@ -616,7 +698,8 @@ function renderKpis(){
     <div class="kpi"><div class="label">Open drawings</div><div class="val">${openDwg}</div><div class="sub">awaiting approval</div></div>
     <div class="kpi"><div class="label">Open WIR / MIR</div><div class="val">${openWIR}</div><div class="sub">pending inspection</div></div>
     <div class="kpi"><div class="label">⚠ Low stock</div><div class="val" style="color:${lowStock?'var(--amber)':'var(--green)'}">${lowStock}</div><div class="sub">items need reorder</div></div>
-    <div class="kpi"><div class="label">🚚 Pending deliveries</div><div class="val" style="color:${pendDel?'var(--blue)':'var(--green)'}">${pendDel}</div><div class="sub">in transit</div></div>`;
+    <div class="kpi"><div class="label">🚚 Pending deliveries</div><div class="val" style="color:${pendDel?'var(--blue)':'var(--green)'}">${pendDel}</div><div class="sub">material lines remaining</div></div>
+    <div class="kpi"><div class="label">🕒 Present today</div><div class="val" style="color:var(--green)">${todayAttendance}</div><div class="sub">attendance marked present</div></div>`;
 }
 
 /* ── TAB SWITCHES ── */
@@ -689,14 +772,28 @@ function renderDoc(kind){
 }
 
 /* ── RENDER STORE ── */
+function remainingToDeliverForMaterial(materialName){
+  const material = String(materialName || '').trim().toLowerCase();
+  if(!material) return 0;
+
+  const OPEN_REQUEST_STATES = ["Submitted","Approved","Ordered"];
+
+  return DB.srequest
+    .filter(req => String(req.material || '').trim().toLowerCase() === material)
+    .filter(req => OPEN_REQUEST_STATES.includes(req.status))
+    .reduce((sum, req) => sum + deliveryStatusForRequest(req).remaining, 0);
+}
+
 function renderInventory(){
   const b=document.getElementById('inventory-body');
-  if(!DB.inventory.length){b.innerHTML='<tr><td colspan="7" class="empty">No items in store.</td></tr>';return;}
+  if(!DB.inventory.length){b.innerHTML='<tr><td colspan="8" class="empty">No items in store.</td></tr>';return;}
   b.innerHTML=DB.inventory.map(it=>{
     const q=Number(it.qtyOnHand),m=Number(it.minStock);
+    const remainingToDeliver = remainingToDeliverForMaterial(it.material);
     const pct=m>0?Math.min(100,Math.round(q/m*100)):100;
     const bc=q===0?'#ef4444':q<=m?'#f59e0b':'#22c55e';
     const cls=q===0?'critical':q<=m?'low':'';
+    const rcls=remainingToDeliver>0?'low':'';
     return `<tr>
       <td><strong>${it.material}</strong></td>
       <td><span style="color:var(--muted);font-size:.8rem">${it.category||'–'}</span></td>
@@ -704,6 +801,7 @@ function renderInventory(){
         <span class="${cls}">${q} ${it.unit||''}</span>
         <div class="qty-bar"><div class="qty-fill" style="width:${pct}%;background:${bc}"></div></div>
       </td>
+      <td><span class="${rcls}" style="font-weight:600">${remainingToDeliver} ${it.unit||''}</span></td>
       <td style="color:var(--muted)">${m} ${it.unit||''}</td>
       <td style="color:var(--muted);font-size:.8rem">${it.location||'–'}</td>
       <td>${badge(it.status)}</td>
@@ -714,28 +812,70 @@ function renderInventory(){
     </tr>`;
   }).join('');
 }
+function deliveredQtyForRequest(req){
+  const reqNo = String(req.reqNo || '').trim().toLowerCase();
+  const material = String(req.material || '').trim().toLowerCase();
+
+  return DB.delivery
+    .filter(d => RECEIVED_STATES.includes(d.status))
+    .filter(d => {
+      const dReqNo = String(d.reqNo || '').trim().toLowerCase();
+      const dMaterial = String(d.material || '').trim().toLowerCase();
+
+      // If a delivery has a related request no., match BOTH request no. and material.
+      // This prevents one delivery quantity from being applied to every line that shares the same request no.
+      if(reqNo && dReqNo){
+        return dReqNo === reqNo && (!dMaterial || dMaterial === material);
+      }
+
+      // Fallback for older delivery entries without request number: match by material name only.
+      return dMaterial === material;
+    })
+    .reduce((sum, d) => sum + Number(d.qtyReceived || 0), 0);
+}
+
+function deliveryStatusForRequest(req){
+  const ordered = Number(req.qty || 0);
+  const delivered = deliveredQtyForRequest(req);
+  const remaining = Math.max(ordered - delivered, 0);
+
+  let status = "Not Delivered";
+  if(delivered > 0 && delivered < ordered) status = "Partially Delivered";
+  if(ordered > 0 && delivered >= ordered) status = "Fully Delivered";
+
+  return { ordered, delivered, remaining, status };
+}
+
 function renderSrequest(){
   const b=document.getElementById('srequest-body');
-  if(!DB.srequest.length){b.innerHTML='<tr><td colspan="8" class="empty">No requests.</td></tr>';return;}
-  b.innerHTML=DB.srequest.map(it=>`<tr>
-    <td style="color:var(--muted);font-size:.8rem">${it.reqNo||'–'}</td>
-    <td>${it.material}</td>
-    <td>${it.qty} ${it.unit||''}</td>
-    <td>${it.requestedBy||'–'}</td>
-    <td>${dateCell(it.requiredBy,it.status)}</td>
-    <td style="color:var(--muted);font-size:.8rem">${it.purpose||'–'}</td>
-    <td>${badge(it.status)}</td>
-    <td><div class="row-actions">
-      <button class="btn-ghost btn-sm" onclick="openModal('srequest','${it.id}')">Edit</button>
-      <button class="btn-danger btn-sm" onclick="del('srequest','${it.id}')">✕</button>
-    </div></td>
-  </tr>`).join('');
+  if(!DB.srequest.length){b.innerHTML='<tr><td colspan="11" class="empty">No requests.</td></tr>';return;}
+  b.innerHTML=DB.srequest.map(it=>{
+    const ds = deliveryStatusForRequest(it);
+    const remainingColor = ds.remaining > 0 ? 'var(--red)' : 'var(--green)';
+    return `<tr>
+      <td style="color:var(--muted);font-size:.8rem">${it.reqNo||'–'}</td>
+      <td>${it.material}</td>
+      <td>${ds.ordered} ${it.unit||''}</td>
+      <td style="font-weight:600;color:var(--green)">${ds.delivered} ${it.unit||''}</td>
+      <td style="font-weight:600;color:${remainingColor}">${ds.remaining} ${it.unit||''}</td>
+      <td>${badge(ds.status)}</td>
+      <td>${it.requestedBy||'–'}</td>
+      <td>${dateCell(it.requiredBy,it.status)}</td>
+      <td style="color:var(--muted);font-size:.8rem">${it.purpose||'–'}</td>
+      <td>${badge(it.status)}</td>
+      <td><div class="row-actions">
+        <button class="btn-ghost btn-sm" onclick="openModal('srequest','${it.id}')">Edit</button>
+        <button class="btn-danger btn-sm" onclick="del('srequest','${it.id}')">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
 }
 function renderDelivery(){
   const b=document.getElementById('delivery-body');
-  if(!DB.delivery.length){b.innerHTML='<tr><td colspan="8" class="empty">No deliveries.</td></tr>';return;}
+  if(!DB.delivery.length){b.innerHTML='<tr><td colspan="9" class="empty">No deliveries.</td></tr>';return;}
   b.innerHTML=DB.delivery.map(it=>`<tr>
     <td style="color:var(--muted);font-size:.8rem">${it.deliveryNo||'–'}</td>
+    <td style="color:var(--muted);font-size:.8rem">${it.reqNo||'–'}</td>
     <td>${it.material}</td>
     <td>${it.supplier||'–'}</td>
     <td>${it.qtyReceived||'–'}</td>
@@ -765,15 +905,69 @@ function renderUsed(){
   </tr>`).join('');
 }
 
+function renderAttendance(){
+  const b=document.getElementById('attendance-body');
+  if(!b)return;
+  const fd=document.getElementById('attendance-date-filter')?.value||'';
+  const fs=document.getElementById('attendance-status-filter')?.value||'';
+  const ft=(document.getElementById('attendance-name-filter')?.value||'').toLowerCase().trim();
+  let rows=DB.attendance.filter(it=>{
+    const hay=(String(it.empNo||'')+' '+String(it.name||'')+' '+String(it.trade||'')+' '+String(it.workLocation||'')).toLowerCase();
+    return(!fd||it.date===fd)&&(!fs||it.status===fs)&&(!ft||hay.includes(ft));
+  });
+  if(!rows.length){b.innerHTML='<tr><td colspan="11" class="empty">No attendance records.</td></tr>';return;}
+  b.innerHTML=rows.map(it=>`<tr>
+    <td style="color:var(--muted);font-size:.8rem">${it.date||'–'}</td>
+    <td style="color:var(--muted);font-size:.8rem">${it.empNo||'–'}</td>
+    <td><strong>${it.name||'–'}</strong></td>
+    <td>${it.trade||'–'}</td>
+    <td>${it.workLocation||'–'}</td>
+    <td>${it.timeIn||'–'}</td>
+    <td>${it.timeOut||'–'}</td>
+    <td>${it.hours||'–'}</td>
+    <td>${badge(it.status)}</td>
+    <td style="color:var(--muted);font-size:.8rem">${it.remarks||'–'}</td>
+    <td><div class="row-actions">
+      <button class="btn-ghost btn-sm" onclick="openModal('attendance','${it.id}')">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('attendance','${it.id}')">✕</button>
+    </div></td>
+  </tr>`).join('');
+}
+
 function renderAll(){
   renderKpis();
   renderTasks();
   ['submittal','drawing','wir','mir'].forEach(renderDoc);
-  renderInventory();renderSrequest();renderDelivery();renderUsed();
+  renderInventory();renderSrequest();renderDelivery();renderUsed();renderAttendance();
 }
 
 /* ── MODAL ── */
 let editKindForSave=null;
+
+function latestEmployeeDetailsByNo(empNo){
+  empNo=String(empNo||'').trim().toLowerCase();
+  if(!empNo)return null;
+  const matches=DB.attendance
+    .filter(x=>String(x.empNo||'').trim().toLowerCase()===empNo)
+    .filter(x=>!editId || String(x.id)!==String(editId));
+  if(!matches.length)return null;
+  matches.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  return matches[0];
+}
+function autoFillAttendanceByEmpNo(){
+  if(editKindForSave!=='attendance')return;
+  const empEl=document.getElementById('f_empNo');
+  const nameEl=document.getElementById('f_name');
+  const tradeEl=document.getElementById('f_trade');
+  const locEl=document.getElementById('f_workLocation');
+  if(!empEl)return;
+  const found=latestEmployeeDetailsByNo(empEl.value);
+  if(!found)return;
+  if(nameEl)nameEl.value=found.name||'';
+  if(tradeEl)tradeEl.value=found.trade||'';
+  if(locEl&&!locEl.value)locEl.value=found.workLocation||'';
+}
+
 function openModal(kind,id){
   editKindForSave=kind;
   editId=(id===undefined||id===null||id==='')?null:id;
@@ -793,7 +987,10 @@ function openModal(kind,id){
     let inp;
     if(f.t==='select') inp=`<select id="f_${f.k}">${(f.opts||[]).map(o=>`<option${String(val)===String(o)?' selected':''}>${o}</option>`).join('')}</select>`;
     else if(f.t==='textarea') inp=`<textarea id="f_${f.k}" rows="2">${val}</textarea>`;
-    else inp=`<input id="f_${f.k}" type="${f.t}" value="${val}">`;
+    else {
+      const autoFillAttr=(kind==='attendance'&&f.k==='empNo')?' oninput="autoFillAttendanceByEmpNo()" onchange="autoFillAttendanceByEmpNo()"':'';
+      inp=`<input id="f_${f.k}" type="${f.t}" value="${val}"${autoFillAttr}>`;
+    }
     return`<div class="field${f.full?' full':''}"><label>${f.l}${f.req?' *':''}</label>${inp}</div>`;
   }).join('');
   document.getElementById('modalBg').classList.add('open');
@@ -809,10 +1006,10 @@ async function adjustInventory(materialName,delta){
   if(inv){
     inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand||0)+delta);
     inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
-    if(USING_SB){ await sb.from('mep_items').update({data:stripId(inv),updated_at:new Date().toISOString()}).eq('id',inv.id); }
+    if(USING_GS){ await gsPost('update',{id:inv.id,data:stripId(inv)}); }
   } else if(delta>0){
     const item={material:materialName,category:'',unit:'',qtyOnHand:delta,minStock:0,location:'',status:autoStockStatus(delta,0),notes:'Auto-added from delivery'};
-    if(USING_SB){ await sb.from('mep_items').insert({kind:'inventory',data:item}); }
+    if(USING_GS){ await gsPost('add',{kind:'inventory',data:item}); }
     else { item.id=nextId.inventory++; DB.inventory.push(item); }
   }
 }
@@ -824,6 +1021,13 @@ async function saveItem(){
   form.fields.forEach(f=>{const el=document.getElementById('f_'+f.k);if(el)obj[f.k]=el.value.trim();});
   const miss=form.fields.filter(f=>f.req&&!obj[f.k]);
   if(miss.length){alert('Required: '+miss.map(f=>f.l).join(', '));return;}
+  if(kind==='attendance'&&!obj.hours&&obj.timeIn&&obj.timeOut){
+    const [ih,im]=obj.timeIn.split(':').map(Number);
+    const [oh,om]=obj.timeOut.split(':').map(Number);
+    let mins=(oh*60+om)-(ih*60+im);
+    if(mins<0)mins+=24*60;
+    obj.hours=(mins/60).toFixed(2).replace(/\.00$/,'');
+  }
 
   const btn=document.getElementById('saveBtn');
   btn.textContent='Saving…';btn.disabled=true;
@@ -875,7 +1079,8 @@ const DEDUP_KEY={
   inventory:['material'],
   srequest:['reqNo'],
   delivery:['deliveryNo'],
-  used:['date','material','qtyUsed']
+  used:['date','material','qtyUsed'],
+  attendance:['date','empNo','name']
 };
 function getActiveKind(){
   if(document.getElementById('main-tasks').classList.contains('active'))return'task';
@@ -887,6 +1092,7 @@ function getActiveKind(){
     const s=document.querySelector('#main-store .section.active');
     return s?s.id.replace('store-',''):'inventory';
   }
+  if(document.getElementById('main-attendance').classList.contains('active'))return'attendance';
   return'task';
 }
 // Excel stores dates as serial numbers (e.g. 46166) — convert to YYYY-MM-DD
@@ -906,7 +1112,7 @@ function excelToISO(v){
   return str;
 }
 // One sheet per module, in a single workbook
-const SHEET_NAME={task:"Tasks",submittal:"Submittals",drawing:"Drawings",wir:"WIR",mir:"MIR",inventory:"Inventory",srequest:"Requests",delivery:"Deliveries",used:"Material Used"};
+const SHEET_NAME={task:"Tasks",submittal:"Submittals",drawing:"Drawings",wir:"WIR",mir:"MIR",inventory:"Inventory",srequest:"Requests",delivery:"Deliveries",used:"Material Used",attendance:"Attendance"};
 function exportExcel(){
   const wb=XLSX.utils.book_new();
   Object.keys(FORMS).forEach(kind=>{
@@ -959,9 +1165,9 @@ async function importExcelFile(e){
         if(keyFields){const kv=keyOf(obj);if(kv.replace(/\|/g,'').trim()!=='')existing=DB[kind].find(x=>keyOf(x)===kv);}
         if(existing)updates.push({existing,obj});else inserts.push(obj);
       });
-      if(USING_SB){
-        if(inserts.length){const {error}=await sb.from('mep_items').insert(inserts.map(o=>({kind,data:o})));if(error){alert('Import failed ('+sheetName+'): '+error.message);return;}}
-        for(const u of updates){const merged={...u.existing,...u.obj};delete merged.id;const {error}=await sb.from('mep_items').update({data:merged,updated_at:new Date().toISOString()}).eq('id',u.existing.id);if(error){alert('Update failed ('+sheetName+'): '+error.message);return;}}
+      if(USING_GS){
+        for(const o of inserts){ await gsPost('add',{kind,data:o}); }
+        for(const u of updates){const merged={...u.existing,...u.obj};delete merged.id;await gsPost('update',{id:u.existing.id,data:merged});}
       }else{
         inserts.forEach(o=>{o.id=nextId[kind]++;DB[kind].push(o);});
         updates.forEach(u=>{const i=DB[kind].findIndex(x=>String(x.id)===String(u.existing.id));const merged={...u.existing,...u.obj};merged.id=u.existing.id;DB[kind][i]=merged;});
@@ -969,20 +1175,65 @@ async function importExcelFile(e){
       totalAdd+=inserts.length;totalUpd+=updates.length;sheetsDone++;
       summary.push(SHEET_NAME[kind]+': +'+inserts.length+' new, '+updates.length+' updated');
     }
-    if(USING_SB) await loadAll(); else { save();renderAll(); }
+    if(USING_GS){ await sleep(1000); await loadAll(); } else { save();renderAll(); }
     if(!sheetsDone) alert('No matching sheets found.\nUse a file exported from this app — sheet names should be: Tasks, Submittals, Drawings, WIR, MIR, Inventory, Requests, Deliveries, Material Used.');
     else alert('Import complete — '+totalAdd+' added, '+totalUpd+' updated.\n\n'+summary.join('\n'));
   };
   reader.readAsArrayBuffer(file);
 }
 
-/* ── LIVE SYNC ── */
-if(USING_SB){
-  sb.channel('mep_live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'mep_items'},()=>loadAll())
-    .subscribe();
+
+/* ── PRINT REPORT ── */
+function stripHtml(html){
+  const div=document.createElement('div');
+  div.innerHTML=html??'';
+  return div.textContent||div.innerText||'';
+}
+function esc(v){
+  return String(v??'').replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+}
+function activeReportConfig(){
+  const kind=getActiveKind();
+  const configs={
+    task:{title:'Tasks',headers:['Task / Activity','Discipline','Responsible','Priority','% Done','Due','Status'],rows:DB.task.map(it=>[it.title,it.discipline,it.owner,it.priority,(it.progress||0)+'%',it.due,it.status])},
+    submittal:{title:'Submittals',headers:['Ref no.','Title','Type','Due','Status'],rows:DB.submittal.map(it=>[it.ref,it.title,it.type,it.due,it.status])},
+    drawing:{title:'Drawings',headers:['Drawing no.','Title','Type','Issued','Status'],rows:DB.drawing.map(it=>[it.drawingNo,it.title,it.drawingType,it.issuedDate,it.status])},
+    wir:{title:'WIR',headers:['WIR no.','Activity','Location','Inspection date','Status'],rows:DB.wir.map(it=>[it.wirNo,it.activity,it.location,it.inspectionDate,it.status])},
+    mir:{title:'MIR',headers:['MIR no.','Material','Supplier','Inspection date','Qty','Status'],rows:DB.mir.map(it=>[it.mirNo,it.material,it.supplier,it.inspectionDate,it.qty,it.status])},
+    inventory:{title:'Inventory',headers:['Material','Category','On hand','Min stock','Remaining to deliver','Location','Status'],rows:DB.inventory.map(it=>{const r=remainingToDeliverForMaterial(it.material);return[it.material,it.category,`${it.qtyOnHand||0} ${it.unit||''}`,`${it.minStock||0} ${it.unit||''}`,`${r} ${it.unit||''}`,it.location,it.status];})},
+    srequest:{title:'Material Requests',headers:['Req no.','Material','Ordered Qty','Delivered Qty','Remaining Qty','Delivery Status','Required by','Status'],rows:DB.srequest.map(it=>{const ds=deliveryStatusForRequest(it);return[it.reqNo,it.material,`${ds.ordered} ${it.unit||''}`,`${ds.delivered} ${it.unit||''}`,`${ds.remaining} ${it.unit||''}`,ds.status,it.requiredBy,it.status];})},
+    delivery:{title:'Deliveries',headers:['Del no.','Req no.','Material','Supplier','Qty received','Expected','Condition','Status'],rows:DB.delivery.map(it=>[it.deliveryNo,it.reqNo,it.material,it.supplier,it.qtyReceived,it.expectedDate,it.condition,it.status])},
+    used:{title:'Material Used',headers:['Date','Material','Qty used','Area / Location','Used by','Notes'],rows:DB.used.map(it=>[it.date,it.material,it.qtyUsed,it.area,it.usedBy,it.notes])},
+    attendance:{title:'Attendance',headers:['Date','Emp. No.','Name','Trade / Team','Working Location','In','Out','Hours','Status','Remarks'],rows:DB.attendance.map(it=>[it.date,it.empNo,it.name,it.trade,it.workLocation,it.timeIn,it.timeOut,it.hours,it.status,it.remarks])}
+  };
+  return configs[kind]||configs.task;
+}
+function printCurrentReport(){
+  const cfg=activeReportConfig();
+  const now=new Date().toLocaleDateString();
+  const tableRows=cfg.rows.length?cfg.rows.map(r=>'<tr>'+r.map(c=>`<td>${esc(stripHtml(c))||'–'}</td>`).join('')+'</tr>').join(''):`<tr><td colspan="${cfg.headers.length}" class="empty">No records.</td></tr>`;
+  const html=`<!DOCTYPE html><html><head><title>${esc(cfg.title)}</title>
+    <style>
+      body{font-family:Arial,sans-serif;color:#111;margin:20px;font-size:12px}
+      h2{font-size:18px;margin:0 0 4px;text-align:center}
+      .date{text-align:center;color:#555;margin-bottom:14px;font-size:11px}
+      table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #999;padding:7px 8px;text-align:left;vertical-align:top}
+      th{background:#eee;font-size:11px;text-transform:uppercase}
+      .empty{text-align:center;color:#666;padding:24px}
+      @page{size:A4 landscape;margin:12mm}
+    </style></head><body>
+      <h2>${esc(cfg.title)}</h2>
+      <div class="date">Printed: ${esc(now)}</div>
+      <table><thead><tr>${cfg.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table>
+      <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300);};<\/script>
+    </body></html>`;
+  const w=window.open('','_blank');
+  if(!w){alert('Please allow pop-ups to print the report.');return;}
+  w.document.open();w.document.write(html);w.document.close();
 }
 
+/* ── START ── */
 loadAll();
 </script>
 </body>
