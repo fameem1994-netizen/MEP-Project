@@ -132,7 +132,6 @@
   <div class="main-tabs">
     <button class="main-tab active" data-main="tasks"       onclick="switchMain('tasks',this)">📋 Tasks</button>
     <button class="main-tab"        data-main="documents"   onclick="switchMain('documents',this)">📄 Documents</button>
-    <button class="main-tab"        data-main="materials"   onclick="switchMain('materials',this)">📦 Materials</button>
     <button class="main-tab"        data-main="store"       onclick="switchMain('store',this)">🏪 Store</button>
   </div>
 
@@ -242,28 +241,6 @@
         <tbody id="mir-body"></tbody>
       </table></div>
     </div>
-  </div>
-
-  <!-- ══════════ MATERIALS ══════════ -->
-  <div id="main-materials" class="section">
-    <div class="filters">
-      <input class="search" id="mat-search" placeholder="🔍 Search…" oninput="renderMat()">
-      <select id="mat-status" onchange="renderMat()">
-        <option value="">All statuses</option>
-        <option>Required</option><option>Approved</option><option>Ordered</option>
-        <option>Delivered</option><option>Installed</option><option>Rejected</option>
-      </select>
-      <select id="mat-disc" onchange="renderMat()">
-        <option value="">All disciplines</option>
-        <option>Mechanical</option><option>Electrical</option><option>Plumbing</option>
-        <option>Fire Fighting</option><option>HVAC</option><option>ELV / Low Voltage</option><option>General</option>
-      </select>
-      <button class="btn-primary" onclick="openModal('material')">+ Add</button>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Material / Equipment</th><th>Discipline</th><th>Supplier</th><th>Qty</th><th>Est. Delivery</th><th>Status</th><th></th></tr></thead>
-      <tbody id="mat-body"></tbody>
-    </table></div>
   </div>
 
   <!-- ══════════ STORE ══════════ -->
@@ -435,20 +412,6 @@ const FORMS = {
       {k:"comments",l:"Inspector comments",t:"textarea",full:true}
     ]
   },
-  material:{
-    title:"Material / Equipment",
-    fields:[
-      {k:"title",l:"Material / Equipment",t:"text",req:true,full:true},
-      {k:"discipline",l:"Discipline",t:"select",opts:DISC},
-      {k:"supplier",l:"Supplier",t:"text"},
-      {k:"qty",l:"Qty",t:"text"},
-      {k:"location",l:"For Area",t:"text"},
-      {k:"orderDate",l:"Order Date",t:"date"},
-      {k:"eta",l:"Est. Delivery",t:"date"},
-      {k:"status",l:"Status",t:"select",opts:["Required","Approved","Ordered","Delivered","Installed","Rejected"]},
-      {k:"notes",l:"Notes",t:"textarea",full:true}
-    ]
-  },
   inventory:{
     title:"Store item",
     fields:[
@@ -505,10 +468,10 @@ const FORMS = {
 };
 
 /* ── STATE ── */
-let DB = {task:[],submittal:[],drawing:[],wir:[],mir:[],material:[],inventory:[],srequest:[],delivery:[],used:[]};
+let DB = {task:[],submittal:[],drawing:[],wir:[],mir:[],inventory:[],srequest:[],delivery:[],used:[]};
 let nextId = {};
 Object.keys(DB).forEach(k=>nextId[k]=1);
-let editId=null, editKind=null;
+let editId=null;
 const LKEY = "mep_v3";
 
 /* ── PERSIST ── */
@@ -538,11 +501,11 @@ async function dbAdd(kind,obj){
 }
 async function dbUpdate(kind,id,obj){
   if(USING_SB){const{error}=await sb.from('mep_items').update({data:obj,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return;}await loadAll();}
-  else{const i=DB[kind].findIndex(x=>x.id===id);obj.id=id;DB[kind][i]=obj;save();renderAll();}
+  else{const i=DB[kind].findIndex(x=>String(x.id)===String(id));obj.id=id;DB[kind][i]=obj;save();renderAll();}
 }
 async function dbDel(kind,id){
   if(USING_SB){const{error}=await sb.from('mep_items').delete().eq('id',id);if(error){alert(error.message);return;}await loadAll();}
-  else{DB[kind]=DB[kind].filter(x=>x.id!==id);save();renderAll();}
+  else{DB[kind]=DB[kind].filter(x=>String(x.id)!==String(id));save();renderAll();}
 }
 
 /* ── SEED ── */
@@ -569,10 +532,6 @@ function seed(){
   DB.mir=[
     {id:r(),mirNo:"MIR-HV-001",material:"VRF outdoor units 8HP",discipline:"HVAC",supplier:"CoolTech",qty:"4 units",deliveryNote:"DN-2026-112",inspector:"Eng. Karimi",inspectionDate:"2026-06-14",status:"Accepted",comments:"All units undamaged."},
     {id:r(),mirNo:"MIR-PL-002",material:"PPR pipes 110mm",discipline:"Plumbing",supplier:"AquaSupply",qty:"200 m",deliveryNote:"DN-2026-118",inspector:"",inspectionDate:"2026-06-20",status:"Pending",comments:""}
-  ];
-  DB.material=[
-    {id:r(),title:"VRF outdoor units (8HP)",discipline:"HVAC",supplier:"CoolTech",qty:"4",location:"Roof",orderDate:"2026-05-05",eta:"2026-06-20",status:"Ordered",notes:""},
-    {id:r(),title:"PPR pipes 110mm",discipline:"Plumbing",supplier:"AquaSupply",qty:"200 m",location:"L1–L3",orderDate:"",eta:"",status:"Required",notes:"Pending approval."}
   ];
   DB.inventory=[
     {id:r(),material:"Copper pipes 20mm",category:"Pipes & Fittings",unit:"m",qtyOnHand:150,minStock:50,location:"A-Rack-02",status:"In Stock",notes:""},
@@ -643,7 +602,7 @@ function switchMain(id,btn){
 }
 function switchSub(id,btn){
   document.querySelectorAll('#main-documents .section[id^="sub-"]').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.main-tabs ~ #main-documents .sub-tab, #main-documents .sub-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#main-documents .sub-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('sub-'+id).classList.add('active');
   btn.classList.add('active');
 }
@@ -674,8 +633,8 @@ function renderTasks(){
     <td>${dateCell(it.due,it.status)}</td>
     <td>${badge(it.status)}</td>
     <td><div class="row-actions">
-      <button class="btn-ghost btn-sm" onclick="openModal('task',${it.id})">Edit</button>
-      <button class="btn-danger btn-sm" onclick="del('task',${it.id})">✕</button>
+      <button class="btn-ghost btn-sm" onclick="openModal('task','${it.id}')">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('task','${it.id}')">✕</button>
     </div></td>
   </tr>`).join('');
 }
@@ -698,34 +657,9 @@ function renderDoc(kind){
   const b=document.getElementById(kind+'-body');
   if(!rows.length){b.innerHTML=`<tr><td colspan="${DOC_SPAN[kind]+1}" class="empty">No entries yet.</td></tr>`;return;}
   b.innerHTML=rows.map(it=>`<tr>${DOC_COLS[kind](it)}<td><div class="row-actions">
-    <button class="btn-ghost btn-sm" onclick="openModal('${kind}',${it.id})">Edit</button>
-    <button class="btn-danger btn-sm" onclick="del('${kind}',${it.id})">✕</button>
+    <button class="btn-ghost btn-sm" onclick="openModal('${kind}','${it.id}')">Edit</button>
+    <button class="btn-danger btn-sm" onclick="del('${kind}','${it.id}')">✕</button>
   </div></td></tr>`).join('');
-}
-
-/* ── RENDER MATERIALS ── */
-function renderMat(){
-  const q=document.getElementById('mat-search').value.toLowerCase();
-  const fs=document.getElementById('mat-status').value;
-  const fd=document.getElementById('mat-disc').value;
-  let rows=DB.material.filter(it=>{
-    const txt=Object.values(it).join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!fs||it.status===fs)&&(!fd||it.discipline===fd);
-  });
-  const b=document.getElementById('mat-body');
-  if(!rows.length){b.innerHTML='<tr><td colspan="7" class="empty">No materials.</td></tr>';return;}
-  b.innerHTML=rows.map(it=>`<tr>
-    <td>${it.title}</td>
-    <td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td>
-    <td>${it.supplier||'–'}</td>
-    <td>${it.qty||'–'}</td>
-    <td>${dateCell(it.eta,it.status)}</td>
-    <td>${badge(it.status)}</td>
-    <td><div class="row-actions">
-      <button class="btn-ghost btn-sm" onclick="openModal('material',${it.id})">Edit</button>
-      <button class="btn-danger btn-sm" onclick="del('material',${it.id})">✕</button>
-    </div></td>
-  </tr>`).join('');
 }
 
 /* ── RENDER STORE ── */
@@ -748,8 +682,8 @@ function renderInventory(){
       <td style="color:var(--muted);font-size:.8rem">${it.location||'–'}</td>
       <td>${badge(it.status)}</td>
       <td><div class="row-actions">
-        <button class="btn-ghost btn-sm" onclick="openModal('inventory',${it.id})">Edit</button>
-        <button class="btn-danger btn-sm" onclick="del('inventory',${it.id})">✕</button>
+        <button class="btn-ghost btn-sm" onclick="openModal('inventory','${it.id}')">Edit</button>
+        <button class="btn-danger btn-sm" onclick="del('inventory','${it.id}')">✕</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -766,8 +700,8 @@ function renderSrequest(){
     <td style="color:var(--muted);font-size:.8rem">${it.purpose||'–'}</td>
     <td>${badge(it.status)}</td>
     <td><div class="row-actions">
-      <button class="btn-ghost btn-sm" onclick="openModal('srequest',${it.id})">Edit</button>
-      <button class="btn-danger btn-sm" onclick="del('srequest',${it.id})">✕</button>
+      <button class="btn-ghost btn-sm" onclick="openModal('srequest','${it.id}')">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('srequest','${it.id}')">✕</button>
     </div></td>
   </tr>`).join('');
 }
@@ -783,8 +717,8 @@ function renderDelivery(){
     <td>${it.condition?badge(it.condition):'–'}</td>
     <td>${badge(it.status)}</td>
     <td><div class="row-actions">
-      <button class="btn-ghost btn-sm" onclick="openModal('delivery',${it.id})">Edit</button>
-      <button class="btn-danger btn-sm" onclick="del('delivery',${it.id})">✕</button>
+      <button class="btn-ghost btn-sm" onclick="openModal('delivery','${it.id}')">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('delivery','${it.id}')">✕</button>
     </div></td>
   </tr>`).join('');
 }
@@ -799,8 +733,8 @@ function renderUsed(){
     <td style="color:var(--muted)">${it.usedBy||'–'}</td>
     <td style="color:var(--muted);font-size:.8rem">${it.notes||'–'}</td>
     <td><div class="row-actions">
-      <button class="btn-ghost btn-sm" onclick="openModal('used',${it.id})">Edit</button>
-      <button class="btn-danger btn-sm" onclick="del('used',${it.id})">✕</button>
+      <button class="btn-ghost btn-sm" onclick="openModal('used','${it.id}')">Edit</button>
+      <button class="btn-danger btn-sm" onclick="del('used','${it.id}')">✕</button>
     </div></td>
   </tr>`).join('');
 }
@@ -809,7 +743,6 @@ function renderAll(){
   renderKpis();
   renderTasks();
   ['submittal','drawing','wir','mir'].forEach(renderDoc);
-  renderMat();
   renderInventory();renderSrequest();renderDelivery();renderUsed();
 }
 
@@ -817,25 +750,25 @@ function renderAll(){
 let editKindForSave=null;
 function openModal(kind,id){
   editKindForSave=kind;
-  editId=id||null;
+  editId=(id===undefined||id===null||id==='')?null:id;
   const form=FORMS[kind];
-  const item=id?DB[kind].find(x=>x.id===id):{};
+  const item=editId?DB[kind].find(x=>String(x.id)===String(editId)):{};
 
-  // For used: material is a dropdown from inventory
+  // For "used": material is a dropdown from inventory
   const fields=form.fields.map(f=>{
     if(f.k==='material'&&kind==='used')
       return{...f,t:'select',opts:DB.inventory.map(i=>i.material)};
     return f;
   });
 
-  document.getElementById('modalTitle').textContent=(id?'Edit ':'New ')+form.title;
+  document.getElementById('modalTitle').textContent=(editId?'Edit ':'New ')+form.title;
   document.getElementById('formFields').innerHTML=fields.map(f=>{
     const val=item[f.k]??'';
     let inp;
     if(f.t==='select') inp=`<select id="f_${f.k}">${(f.opts||[]).map(o=>`<option${String(val)===String(o)?' selected':''}>${o}</option>`).join('')}</select>`;
     else if(f.t==='textarea') inp=`<textarea id="f_${f.k}" rows="2">${val}</textarea>`;
     else inp=`<input id="f_${f.k}" type="${f.t}" value="${val}">`;
-    return`<div class="field${f.full?' full':''}""><label>${f.l}${f.req?' *':''}</label>${inp}</div>`;
+    return`<div class="field${f.full?' full':''}"><label>${f.l}${f.req?' *':''}</label>${inp}</div>`;
   }).join('');
   document.getElementById('modalBg').classList.add('open');
 }
@@ -856,7 +789,7 @@ async function saveItem(){
   // Material used: deduct/restore inventory
   if(kind==='used'){
     if(ed){
-      const old=DB.used.find(x=>x.id===ed);
+      const old=DB.used.find(x=>String(x.id)===String(ed));
       if(old){
         const inv=DB.inventory.find(i=>i.material===old.material);
         if(inv){inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand)+Number(old.qtyUsed));inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);}
@@ -866,7 +799,8 @@ async function saveItem(){
     if(inv){
       inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand)-Number(obj.qtyUsed));
       inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
-      if(!USING_SB) save();
+      if(USING_SB){ await dbUpdate('inventory',inv.id,stripId(inv)); }
+      else save();
     }
   }
 
@@ -875,14 +809,21 @@ async function saveItem(){
   btn.textContent='Save';btn.disabled=false;
 }
 
+function stripId(o){const c={...o};delete c.id;return c;}
+
 async function del(kind,id){
   if(!confirm('Delete this entry?'))return;
-  // Restore inventory if deleting used entry
+  // Restore inventory if deleting a "used" entry
   if(kind==='used'){
-    const entry=DB.used.find(x=>x.id===id);
+    const entry=DB.used.find(x=>String(x.id)===String(id));
     if(entry){
       const inv=DB.inventory.find(i=>i.material===entry.material);
-      if(inv){inv.qtyOnHand=Number(inv.qtyOnHand)+Number(entry.qtyUsed);inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);if(!USING_SB)save();}
+      if(inv){
+        inv.qtyOnHand=Number(inv.qtyOnHand)+Number(entry.qtyUsed);
+        inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
+        if(USING_SB){ await dbUpdate('inventory',inv.id,stripId(inv)); }
+        else save();
+      }
     }
   }
   await dbDel(kind,id);
