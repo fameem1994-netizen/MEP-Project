@@ -117,9 +117,11 @@
 <div class="banner" id="banner"></div>
 <header>
   <h1>🏗️ MEP Project Follow-Up</h1>
-  <input id="projName" class="proj-name" placeholder="Project name…">
   <div class="toolbar">
     <span id="liveStatus" style="font-size:.76rem;color:#bae6fd"></span>
+    <button class="btn-ghost btn-sm" onclick="exportExcel()">⬇ Excel</button>
+    <button class="btn-ghost btn-sm" onclick="document.getElementById('xlsxInput').click()">⬆ Excel</button>
+    <input type="file" id="xlsxInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelFile(event)">
     <button class="btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
     <button class="btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
   </div>
@@ -138,7 +140,6 @@
   <!-- ══════════ TASKS ══════════ -->
   <div id="main-tasks" class="section active">
     <div class="filters">
-      <input class="search" id="task-search" placeholder="🔍 Search…" oninput="renderTasks()">
       <select id="task-status" onchange="renderTasks()">
         <option value="">All statuses</option>
         <option>Not Started</option><option>In Progress</option><option>On Hold</option><option>Completed</option>
@@ -177,7 +178,6 @@
     <!-- Submittals -->
     <div id="sub-submittal" class="section active">
       <div class="filters">
-        <input class="search" id="submittal-search" placeholder="🔍 Search…" oninput="renderDoc('submittal')">
         <select id="submittal-status" onchange="renderDoc('submittal')">
           <option value="">All statuses</option>
           <option>Draft</option><option>Submitted</option><option>Under Review</option>
@@ -194,7 +194,6 @@
     <!-- Drawings -->
     <div id="sub-drawing" class="section">
       <div class="filters">
-        <input class="search" id="drawing-search" placeholder="🔍 Search…" oninput="renderDoc('drawing')">
         <select id="drawing-status" onchange="renderDoc('drawing')">
           <option value="">All statuses</option>
           <option>Draft</option><option>Submitted</option><option>Under Review</option>
@@ -211,7 +210,6 @@
     <!-- WIR -->
     <div id="sub-wir" class="section">
       <div class="filters">
-        <input class="search" id="wir-search" placeholder="🔍 Search…" oninput="renderDoc('wir')">
         <select id="wir-status" onchange="renderDoc('wir')">
           <option value="">All statuses</option>
           <option>Draft</option><option>Submitted</option><option>Pending</option>
@@ -228,7 +226,6 @@
     <!-- MIR -->
     <div id="sub-mir" class="section">
       <div class="filters">
-        <input class="search" id="mir-search" placeholder="🔍 Search…" oninput="renderDoc('mir')">
         <select id="mir-status" onchange="renderDoc('mir')">
           <option value="">All statuses</option>
           <option>Draft</option><option>Submitted</option><option>Pending</option>
@@ -318,6 +315,7 @@
 <footer>MEP Follow-Up & Monitoring · Supabase live sync</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ── SUPABASE KEYS ── */
 const SUPABASE_URL      = "https://gkevsflbwajsovpmmhfy.supabase.co";
@@ -575,19 +573,37 @@ function autoStockStatus(qty,min){
 function banner(type,html){const b=document.getElementById('banner');b.className='banner show '+type;b.innerHTML=html;}
 
 /* ── KPIs ── */
+const PENDING_APPROVAL = {
+  submittal:(s)=>!["Approved","Approved w/ Comments","Rejected"].includes(s),
+  drawing:(s)=>!["Approved","For Construction","Superseded","Rejected"].includes(s),
+  wir:(s)=>!["Accepted","Closed","Not Accepted"].includes(s),
+  mir:(s)=>!["Accepted","Closed","Not Accepted"].includes(s),
+  srequest:(s)=>!["Approved","Rejected","Completed"].includes(s)
+};
+function pendingApprovalBreakdown(){
+  const b={};let total=0;
+  ['submittal','drawing','wir','mir','srequest'].forEach(k=>{
+    const n=DB[k].filter(x=>PENDING_APPROVAL[k](x.status)).length;
+    b[k]=n;total+=n;
+  });
+  b.total=total;return b;
+}
 function renderKpis(){
   const t=DB.task;
   const done=t.filter(x=>x.status==="Completed").length;
   const avg=t.length?Math.round(t.reduce((a,x)=>a+(+x.progress||0),0)/t.length):0;
   const lowStock=DB.inventory.filter(x=>Number(x.qtyOnHand)<=Number(x.minStock)).length;
   const pendDel=DB.delivery.filter(x=>x.status==="Pending").length;
-  const pendSub=DB.submittal.filter(x=>!["Approved","Approved w/ Comments","Rejected"].includes(x.status)).length;
   const openWIR=DB.wir.filter(x=>!["Accepted","Closed"].includes(x.status)).length;
+  const pa=pendingApprovalBreakdown();
   document.getElementById('kpis').innerHTML=`
+    <div class="kpi" style="border-color:${pa.total?'#92400e':'var(--line)'};background:${pa.total?'#3a200a':'var(--panel)'}">
+      <div class="label">⏳ Pending approvals</div>
+      <div class="val" style="color:${pa.total?'var(--amber)':'var(--green)'}">${pa.total}</div>
+      <div class="sub">Subm ${pa.submittal} · Dwg ${pa.drawing} · WIR ${pa.wir} · MIR ${pa.mir} · Req ${pa.srequest}</div></div>
     <div class="kpi"><div class="label">Overall progress</div><div class="val">${avg}%</div>
       <div class="progress-track"><div class="progress-fill" style="width:${avg}%"></div></div></div>
     <div class="kpi"><div class="label">Tasks completed</div><div class="val">${done}/${t.length}</div><div class="sub">activities closed</div></div>
-    <div class="kpi"><div class="label">Open submittals</div><div class="val">${pendSub}</div><div class="sub">awaiting approval</div></div>
     <div class="kpi"><div class="label">Open WIR / MIR</div><div class="val">${openWIR}</div><div class="sub">pending inspection</div></div>
     <div class="kpi"><div class="label">⚠ Low stock</div><div class="val" style="color:${lowStock?'var(--amber)':'var(--green)'}">${lowStock}</div><div class="sub">items need reorder</div></div>
     <div class="kpi"><div class="label">🚚 Pending deliveries</div><div class="val" style="color:${pendDel?'var(--blue)':'var(--green)'}">${pendDel}</div><div class="sub">in transit</div></div>`;
@@ -615,12 +631,10 @@ function switchStoreSub(id,btn){
 
 /* ── RENDER TASKS ── */
 function renderTasks(){
-  const q=document.getElementById('task-search').value.toLowerCase();
   const fs=document.getElementById('task-status').value;
   const fd=document.getElementById('task-disc').value;
   let rows=DB.task.filter(it=>{
-    const txt=Object.values(it).join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!fs||it.status===fs)&&(!fd||it.discipline===fd);
+    return(!fs||it.status===fs)&&(!fd||it.discipline===fd);
   });
   const b=document.getElementById('task-body');
   if(!rows.length){b.innerHTML='<tr><td colspan="8" class="empty">No tasks. Click "+ Add task".</td></tr>';return;}
@@ -648,11 +662,9 @@ const DOC_COLS={
 };
 const DOC_SPAN={submittal:7,drawing:8,wir:7,mir:7};
 function renderDoc(kind){
-  const q=document.getElementById(kind+'-search').value.toLowerCase();
   const fs=document.getElementById(kind+'-status').value;
   let rows=DB[kind].filter(it=>{
-    const txt=Object.values(it).join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!fs||it.status===fs);
+    return(!fs||it.status===fs);
   });
   const b=document.getElementById(kind+'-body');
   if(!rows.length){b.innerHTML=`<tr><td colspan="${DOC_SPAN[kind]+1}" class="empty">No entries yet.</td></tr>`;return;}
@@ -837,6 +849,110 @@ function sortTable(kind,k){
   if(sortK===k)sortD*=-1;else{sortK=k;sortD=1;}
   DB[kind].sort((a,b)=>((a[k]||'')>(b[k]||'')?1:-1)*sortD);
   renderTasks();
+}
+
+/* ── EXCEL (current tab only) ── */
+// Field(s) used to recognise an existing row on import (prevents duplicates)
+const DEDUP_KEY={
+  task:['title'],
+  submittal:['ref'],
+  drawing:['drawingNo'],
+  wir:['wirNo'],
+  mir:['mirNo'],
+  inventory:['material'],
+  srequest:['reqNo'],
+  delivery:['deliveryNo'],
+  used:['date','material','qtyUsed']
+};
+function getActiveKind(){
+  if(document.getElementById('main-tasks').classList.contains('active'))return'task';
+  if(document.getElementById('main-documents').classList.contains('active')){
+    const s=document.querySelector('#main-documents .section.active');
+    return s?s.id.replace('sub-',''):'submittal';
+  }
+  if(document.getElementById('main-store').classList.contains('active')){
+    const s=document.querySelector('#main-store .section.active');
+    return s?s.id.replace('store-',''):'inventory';
+  }
+  return'task';
+}
+function exportExcel(){
+  const kind=getActiveKind();
+  const form=FORMS[kind];
+  const headers=form.fields.map(f=>f.l);
+  const keys=form.fields.map(f=>f.k);
+  const aoa=[headers,...DB[kind].map(it=>keys.map(k=>it[k]??''))];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,form.title.slice(0,28));
+  const pn=document.getElementById('projName');
+  const proj=((pn&&pn.value)||'MEP').replace(/[^\w]+/g,'_');
+  XLSX.writeFile(wb,proj+'_'+kind+'.xlsx');
+}
+async function importExcelFile(e){
+  const file=e.target.files[0];e.target.value='';
+  if(!file)return;
+  const kind=getActiveKind();
+  const form=FORMS[kind];
+  const labelToKey={};form.fields.forEach(f=>labelToKey[f.l.toLowerCase().trim()]=f.k);
+  const keySet=new Set(form.fields.map(f=>f.k));
+  const reader=new FileReader();
+  reader.onload=async(ev)=>{
+    let rows;
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    }catch(err){alert('Could not read file: '+err.message);return;}
+    if(!rows||rows.length<2){alert('No data rows found.');return;}
+    const headers=rows[0].map(h=>String(h).toLowerCase().trim());
+    const records=[];
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i];if(!r)continue;
+      const obj={};
+      headers.forEach((h,ci)=>{
+        const key=labelToKey[h]||(keySet.has(h)?h:null);
+        if(key)obj[key]=r[ci]!=null?String(r[ci]).trim():'';
+      });
+      if(Object.values(obj).some(v=>v!==''))records.push(obj);
+    }
+    if(!records.length){alert('No matching rows. Make sure the column titles match the table headers (tip: export first to get the right format).');return;}
+
+    // Split into new rows vs. updates to existing rows (matched by key field)
+    const keyFields=DEDUP_KEY[kind]||null;
+    const keyOf=(o)=>keyFields?keyFields.map(f=>String(o[f]??'').toLowerCase().trim()).join('||'):'';
+    const inserts=[],updates=[];
+    records.forEach(obj=>{
+      let existing=null;
+      if(keyFields){
+        const kv=keyOf(obj);
+        if(kv.replace(/\|/g,'').trim()!=='') existing=DB[kind].find(x=>keyOf(x)===kv);
+      }
+      if(existing)updates.push({existing,obj});else inserts.push(obj);
+    });
+
+    const keyLabel=keyFields?keyFields.join(' + '):'none';
+    if(!confirm('Import into "'+form.title+'":\n• '+inserts.length+' new row(s) added\n• '+updates.length+' existing row(s) updated (matched by '+keyLabel+')\n\nContinue?'))return;
+
+    if(USING_SB){
+      if(inserts.length){
+        const {error}=await sb.from('mep_items').insert(inserts.map(obj=>({kind,data:obj})));
+        if(error){alert('Import failed: '+error.message);return;}
+      }
+      for(const u of updates){
+        const merged={...u.existing,...u.obj};delete merged.id;
+        const {error}=await sb.from('mep_items').update({data:merged,updated_at:new Date().toISOString()}).eq('id',u.existing.id);
+        if(error){alert('Update failed: '+error.message);return;}
+      }
+      await loadAll();
+    }else{
+      inserts.forEach(obj=>{obj.id=nextId[kind]++;DB[kind].push(obj);});
+      updates.forEach(u=>{const i=DB[kind].findIndex(x=>String(x.id)===String(u.existing.id));const merged={...u.existing,...u.obj};merged.id=u.existing.id;DB[kind][i]=merged;});
+      save();renderAll();
+    }
+    alert('Done — '+inserts.length+' added, '+updates.length+' updated in '+form.title+'.');
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 /* ── LIVE SYNC ── */
