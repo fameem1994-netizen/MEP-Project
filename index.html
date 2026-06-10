@@ -357,39 +357,16 @@
   </div>
 </div>
 
-<footer>MEP Follow-Up & Monitoring · Google Sheets sync</footer>
+<footer>MEP Follow-Up & Monitoring · Supabase live sync</footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-/* ── GOOGLE SHEETS WEB APP URL ──
-   1) Create the Google Apps Script backend from the supplied Code.gs file.
-   2) Deploy it as a Web app.
-   3) Paste the /exec URL below.
-*/
-const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzMv_Mzfyftqgdfe_lyh1SCyG90giqWi6DcjMZyAjjJgdIhoHkU5LxZfRymbmq8AJlL/exec";
-const USING_GS = GOOGLE_SHEET_API_URL && !GOOGLE_SHEET_API_URL.includes('PASTE_GOOGLE_APPS_SCRIPT');
-
-function gsJsonp(params={}){
-  return new Promise((resolve,reject)=>{
-    const cb='gs_cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    const script=document.createElement('script');
-    const qs=new URLSearchParams({...params,callback:cb,cacheBust:Date.now()}).toString();
-    const timer=setTimeout(()=>{cleanup();reject(new Error('Google Sheets read timeout'));},15000);
-    function cleanup(){clearTimeout(timer);delete window[cb];script.remove();}
-    window[cb]=(data)=>{cleanup();resolve(data);};
-    script.onerror=()=>{cleanup();reject(new Error('Could not load Google Sheets data'));};
-    script.src=GOOGLE_SHEET_API_URL+(GOOGLE_SHEET_API_URL.includes('?')?'&':'?')+qs;
-    document.head.appendChild(script);
-  });
-}
-
-async function gsPost(action,payload={}){
-  if(!USING_GS)return;
-  const body=new URLSearchParams({payload:JSON.stringify({action,...payload})});
-  await fetch(GOOGLE_SHEET_API_URL,{method:'POST',mode:'no-cors',body});
-}
-
-function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+/* ── SUPABASE KEYS ── */
+const SUPABASE_URL      = "https://gkevsflbwajsovpmmhfy.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZXZzZmxid2Fqc292cG1taGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODc2MTYsImV4cCI6MjA5NjU2MzYxNn0.BA8LYAL210ubAxDUTIeF68-FEd4PLgWJbBU78m9rstE";
+const USING_SB = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+let sb = USING_SB ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 /* ── CONSTANTS ── */
 const DISC = ["Mechanical","Electrical","Plumbing","Fire Fighting","HVAC","ELV / Low Voltage","General"];
@@ -558,47 +535,35 @@ const LKEY = "mep_v3";
 
 /* ── PERSIST ── */
 async function loadAll(){
-  if(USING_GS){
+  if(USING_SB){
     try{
-      const res=await gsJsonp({action:'read'});
-      if(!res||res.ok===false)throw new Error((res&&res.error)||'Google Sheets read failed');
+      const {data,error}=await sb.from('mep_items').select('*').order('created_at',{ascending:true});
+      if(error)throw error;
       Object.keys(DB).forEach(k=>DB[k]=[]);
-      (res.data||[]).forEach(r=>{
-        if(DB[r.kind]){
-          const rowData=typeof r.data==='string'?JSON.parse(r.data||'{}'):(r.data||{});
-          DB[r.kind].push({id:r.id,...rowData});
-        }
-      });
-      Object.keys(nextId).forEach(k=>{
-        const nums=DB[k].map(x=>Number(x.id)).filter(Number.isFinite);
-        nextId[k]=nums.length?Math.max(...nums)+1:1;
-      });
-      banner('ok','<span class="dot" style="background:#22c55e"></span>Live — syncing with Google Sheets.');
-      document.getElementById('liveStatus').innerHTML='● Google Sheets';
-    }catch(e){
-      banner('err','Google Sheets error: '+(e.message||e));
-      document.getElementById('liveStatus').textContent='offline';
-    }
+      data.forEach(r=>{if(DB[r.kind])DB[r.kind].push({id:r.id,...r.data});});
+      banner('ok','<span class="dot" style="background:#22c55e"></span>Live — syncing with team.');
+      document.getElementById('liveStatus').innerHTML='● live';
+    }catch(e){banner('err','DB error: '+(e.message||e));}
   } else {
     try{const s=JSON.parse(localStorage.getItem(LKEY));if(s&&s.task)Object.assign(DB,s);}catch(e){}
     if(!DB.task.length) seed();
-    banner('warn','⚙ Demo mode — paste your Google Apps Script URL to sync online.');
+    banner('warn','⚙ Demo mode — data stored locally.');
     document.getElementById('liveStatus').textContent='demo';
   }
   renderAll();
 }
-function save(){if(!USING_GS)localStorage.setItem(LKEY,JSON.stringify(DB));}
+function save(){if(!USING_SB)localStorage.setItem(LKEY,JSON.stringify(DB));}
 
 async function dbAdd(kind,obj){
-  if(USING_GS){await gsPost('add',{kind,data:obj});await sleep(700);await loadAll();}
+  if(USING_SB){const{error}=await sb.from('mep_items').insert({kind,data:obj});if(error){alert(error.message);return;}await loadAll();}
   else{obj.id=nextId[kind]++;DB[kind].push(obj);save();renderAll();}
 }
 async function dbUpdate(kind,id,obj){
-  if(USING_GS){await gsPost('update',{id,data:obj});await sleep(700);await loadAll();}
+  if(USING_SB){const{error}=await sb.from('mep_items').update({data:obj,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return;}await loadAll();}
   else{const i=DB[kind].findIndex(x=>String(x.id)===String(id));obj.id=id;DB[kind][i]=obj;save();renderAll();}
 }
 async function dbDel(kind,id){
-  if(USING_GS){await gsPost('delete',{id});await sleep(700);await loadAll();}
+  if(USING_SB){const{error}=await sb.from('mep_items').delete().eq('id',id);if(error){alert(error.message);return;}await loadAll();}
   else{DB[kind]=DB[kind].filter(x=>String(x.id)!==String(id));save();renderAll();}
 }
 
@@ -1006,10 +971,10 @@ async function adjustInventory(materialName,delta){
   if(inv){
     inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand||0)+delta);
     inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
-    if(USING_GS){ await gsPost('update',{id:inv.id,data:stripId(inv)}); }
+    if(USING_SB){ await sb.from('mep_items').update({data:stripId(inv),updated_at:new Date().toISOString()}).eq('id',inv.id); }
   } else if(delta>0){
     const item={material:materialName,category:'',unit:'',qtyOnHand:delta,minStock:0,location:'',status:autoStockStatus(delta,0),notes:'Auto-added from delivery'};
-    if(USING_GS){ await gsPost('add',{kind:'inventory',data:item}); }
+    if(USING_SB){ await sb.from('mep_items').insert({kind:'inventory',data:item}); }
     else { item.id=nextId.inventory++; DB.inventory.push(item); }
   }
 }
@@ -1165,9 +1130,9 @@ async function importExcelFile(e){
         if(keyFields){const kv=keyOf(obj);if(kv.replace(/\|/g,'').trim()!=='')existing=DB[kind].find(x=>keyOf(x)===kv);}
         if(existing)updates.push({existing,obj});else inserts.push(obj);
       });
-      if(USING_GS){
-        for(const o of inserts){ await gsPost('add',{kind,data:o}); }
-        for(const u of updates){const merged={...u.existing,...u.obj};delete merged.id;await gsPost('update',{id:u.existing.id,data:merged});}
+      if(USING_SB){
+        if(inserts.length){const {error}=await sb.from('mep_items').insert(inserts.map(o=>({kind,data:o})));if(error){alert('Import failed ('+sheetName+'): '+error.message);return;}}
+        for(const u of updates){const merged={...u.existing,...u.obj};delete merged.id;const {error}=await sb.from('mep_items').update({data:merged,updated_at:new Date().toISOString()}).eq('id',u.existing.id);if(error){alert('Update failed ('+sheetName+'): '+error.message);return;}}
       }else{
         inserts.forEach(o=>{o.id=nextId[kind]++;DB[kind].push(o);});
         updates.forEach(u=>{const i=DB[kind].findIndex(x=>String(x.id)===String(u.existing.id));const merged={...u.existing,...u.obj};merged.id=u.existing.id;DB[kind][i]=merged;});
@@ -1175,7 +1140,7 @@ async function importExcelFile(e){
       totalAdd+=inserts.length;totalUpd+=updates.length;sheetsDone++;
       summary.push(SHEET_NAME[kind]+': +'+inserts.length+' new, '+updates.length+' updated');
     }
-    if(USING_GS){ await sleep(1000); await loadAll(); } else { save();renderAll(); }
+    if(USING_SB) await loadAll(); else { save();renderAll(); }
     if(!sheetsDone) alert('No matching sheets found.\nUse a file exported from this app — sheet names should be: Tasks, Submittals, Drawings, WIR, MIR, Inventory, Requests, Deliveries, Material Used.');
     else alert('Import complete — '+totalAdd+' added, '+totalUpd+' updated.\n\n'+summary.join('\n'));
   };
@@ -1233,7 +1198,13 @@ function printCurrentReport(){
   w.document.open();w.document.write(html);w.document.close();
 }
 
-/* ── START ── */
+/* ── LIVE SYNC ── */
+if(USING_SB){
+  sb.channel('mep_live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'mep_items'},()=>loadAll())
+    .subscribe();
+}
+
 loadAll();
 </script>
 </body>
