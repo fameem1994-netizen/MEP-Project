@@ -119,8 +119,8 @@
   <h1>🏗️ MEP Project Follow-Up</h1>
   <div class="toolbar">
     <span id="liveStatus" style="font-size:.76rem;color:#bae6fd"></span>
-    <button class="btn-ghost btn-sm" onclick="exportExcel()">⬇ Excel</button>
-    <button class="btn-ghost btn-sm" onclick="document.getElementById('xlsxInput').click()">⬆ Excel</button>
+    <button class="btn-ghost btn-sm" onclick="exportExcel()">⬇ Export</button>
+    <button class="btn-ghost btn-sm" onclick="document.getElementById('xlsxInput').click()">⬆ Import</button>
     <input type="file" id="xlsxInput" accept=".xlsx,.xls" style="display:none" onchange="importExcelFile(event)">
     <button class="btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
     <button class="btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
@@ -905,84 +905,73 @@ function excelToISO(v){
   }
   return str;
 }
+// One sheet per module, in a single workbook
+const SHEET_NAME={task:"Tasks",submittal:"Submittals",drawing:"Drawings",wir:"WIR",mir:"MIR",inventory:"Inventory",srequest:"Requests",delivery:"Deliveries",used:"Material Used"};
 function exportExcel(){
-  const kind=getActiveKind();
-  const form=FORMS[kind];
-  const headers=form.fields.map(f=>f.l);
-  const keys=form.fields.map(f=>f.k);
-  const aoa=[headers,...DB[kind].map(it=>keys.map(k=>it[k]??''))];
-  const ws=XLSX.utils.aoa_to_sheet(aoa);
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,form.title.slice(0,28));
-  const pn=document.getElementById('projName');
-  const proj=((pn&&pn.value)||'MEP').replace(/[^\w]+/g,'_');
-  XLSX.writeFile(wb,proj+'_'+kind+'.xlsx');
+  Object.keys(FORMS).forEach(kind=>{
+    const form=FORMS[kind];
+    const keys=form.fields.map(f=>f.k);
+    const aoa=[form.fields.map(f=>f.l),...DB[kind].map(it=>keys.map(k=>it[k]??''))];
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),SHEET_NAME[kind]);
+  });
+  XLSX.writeFile(wb,'MEP_Project.xlsx');
 }
 async function importExcelFile(e){
   const file=e.target.files[0];e.target.value='';
   if(!file)return;
-  const kind=getActiveKind();
-  const form=FORMS[kind];
-  const labelToKey={};form.fields.forEach(f=>labelToKey[f.l.toLowerCase().trim()]=f.k);
-  const keySet=new Set(form.fields.map(f=>f.k));
-  const keyType={};form.fields.forEach(f=>keyType[f.k]=f.t);
+  if(!confirm('Import the whole project from this file?\nEvery sheet is read; rows with a matching reference number are updated, new ones are added.'))return;
+  const nameToKind={};Object.keys(SHEET_NAME).forEach(k=>nameToKind[SHEET_NAME[k].toLowerCase()]=k);
   const reader=new FileReader();
   reader.onload=async(ev)=>{
-    let rows;
-    try{
-      const wb=XLSX.read(ev.target.result,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-    }catch(err){alert('Could not read file: '+err.message);return;}
-    if(!rows||rows.length<2){alert('No data rows found.');return;}
-    const headers=rows[0].map(h=>String(h).toLowerCase().trim());
-    const records=[];
-    for(let i=1;i<rows.length;i++){
-      const r=rows[i];if(!r)continue;
-      const obj={};
-      headers.forEach((h,ci)=>{
-        const key=labelToKey[h]||(keySet.has(h)?h:null);
-        if(!key)return;
-        const raw=r[ci];
-        obj[key]=keyType[key]==='date'?excelToISO(raw):(raw!=null?String(raw).trim():'');
+    let wb;
+    try{ wb=XLSX.read(ev.target.result,{type:'array'}); }
+    catch(err){alert('Could not read file: '+err.message);return;}
+    let totalAdd=0,totalUpd=0,sheetsDone=0;const summary=[];
+    for(const sheetName of wb.SheetNames){
+      const kind=nameToKind[sheetName.toLowerCase().trim()];
+      if(!kind)continue;
+      const form=FORMS[kind];
+      const labelToKey={};form.fields.forEach(f=>labelToKey[f.l.toLowerCase().trim()]=f.k);
+      const keySet=new Set(form.fields.map(f=>f.k));
+      const keyType={};form.fields.forEach(f=>keyType[f.k]=f.t);
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});
+      if(!rows||rows.length<2)continue;
+      const headers=rows[0].map(h=>String(h).toLowerCase().trim());
+      const records=[];
+      for(let i=1;i<rows.length;i++){
+        const r=rows[i];if(!r)continue;
+        const obj={};
+        headers.forEach((h,ci)=>{
+          const key=labelToKey[h]||(keySet.has(h)?h:null);
+          if(!key)return;
+          const raw=r[ci];
+          obj[key]=keyType[key]==='date'?excelToISO(raw):(raw!=null?String(raw).trim():'');
+        });
+        if(Object.values(obj).some(v=>v!==''))records.push(obj);
+      }
+      if(!records.length)continue;
+      const keyFields=DEDUP_KEY[kind]||null;
+      const keyOf=(o)=>keyFields?keyFields.map(f=>String(o[f]??'').toLowerCase().trim()).join('||'):'';
+      const inserts=[],updates=[];
+      records.forEach(obj=>{
+        let existing=null;
+        if(keyFields){const kv=keyOf(obj);if(kv.replace(/\|/g,'').trim()!=='')existing=DB[kind].find(x=>keyOf(x)===kv);}
+        if(existing)updates.push({existing,obj});else inserts.push(obj);
       });
-      if(Object.values(obj).some(v=>v!==''))records.push(obj);
+      if(USING_SB){
+        if(inserts.length){const {error}=await sb.from('mep_items').insert(inserts.map(o=>({kind,data:o})));if(error){alert('Import failed ('+sheetName+'): '+error.message);return;}}
+        for(const u of updates){const merged={...u.existing,...u.obj};delete merged.id;const {error}=await sb.from('mep_items').update({data:merged,updated_at:new Date().toISOString()}).eq('id',u.existing.id);if(error){alert('Update failed ('+sheetName+'): '+error.message);return;}}
+      }else{
+        inserts.forEach(o=>{o.id=nextId[kind]++;DB[kind].push(o);});
+        updates.forEach(u=>{const i=DB[kind].findIndex(x=>String(x.id)===String(u.existing.id));const merged={...u.existing,...u.obj};merged.id=u.existing.id;DB[kind][i]=merged;});
+      }
+      totalAdd+=inserts.length;totalUpd+=updates.length;sheetsDone++;
+      summary.push(SHEET_NAME[kind]+': +'+inserts.length+' new, '+updates.length+' updated');
     }
-    if(!records.length){alert('No matching rows. Make sure the column titles match the table headers (tip: export first to get the right format).');return;}
-
-    // Split into new rows vs. updates to existing rows (matched by key field)
-    const keyFields=DEDUP_KEY[kind]||null;
-    const keyOf=(o)=>keyFields?keyFields.map(f=>String(o[f]??'').toLowerCase().trim()).join('||'):'';
-    const inserts=[],updates=[];
-    records.forEach(obj=>{
-      let existing=null;
-      if(keyFields){
-        const kv=keyOf(obj);
-        if(kv.replace(/\|/g,'').trim()!=='') existing=DB[kind].find(x=>keyOf(x)===kv);
-      }
-      if(existing)updates.push({existing,obj});else inserts.push(obj);
-    });
-
-    const keyLabel=keyFields?keyFields.join(' + '):'none';
-    if(!confirm('Import into "'+form.title+'":\n• '+inserts.length+' new row(s) added\n• '+updates.length+' existing row(s) updated (matched by '+keyLabel+')\n\nContinue?'))return;
-
-    if(USING_SB){
-      if(inserts.length){
-        const {error}=await sb.from('mep_items').insert(inserts.map(obj=>({kind,data:obj})));
-        if(error){alert('Import failed: '+error.message);return;}
-      }
-      for(const u of updates){
-        const merged={...u.existing,...u.obj};delete merged.id;
-        const {error}=await sb.from('mep_items').update({data:merged,updated_at:new Date().toISOString()}).eq('id',u.existing.id);
-        if(error){alert('Update failed: '+error.message);return;}
-      }
-      await loadAll();
-    }else{
-      inserts.forEach(obj=>{obj.id=nextId[kind]++;DB[kind].push(obj);});
-      updates.forEach(u=>{const i=DB[kind].findIndex(x=>String(x.id)===String(u.existing.id));const merged={...u.existing,...u.obj};merged.id=u.existing.id;DB[kind][i]=merged;});
-      save();renderAll();
-    }
-    alert('Done — '+inserts.length+' added, '+updates.length+' updated in '+form.title+'.');
+    if(USING_SB) await loadAll(); else { save();renderAll(); }
+    if(!sheetsDone) alert('No matching sheets found.\nUse a file exported from this app — sheet names should be: Tasks, Submittals, Drawings, WIR, MIR, Inventory, Requests, Deliveries, Material Used.');
+    else alert('Import complete — '+totalAdd+' added, '+totalUpd+' updated.\n\n'+summary.join('\n'));
   };
   reader.readAsArrayBuffer(file);
 }
