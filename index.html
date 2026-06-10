@@ -303,6 +303,7 @@
         <h3>Deliveries</h3>
         <button class="btn-primary" onclick="openModal('delivery')">+ Log delivery</button>
       </div>
+      <div class="info-note">⚡ Marking a delivery <b>Received</b>, <b>Inspected</b> or <b>Stored</b> automatically adds its quantity to Inventory.</div>
       <div class="table-wrap"><table>
         <thead><tr><th>Del no.</th><th>Material</th><th>Supplier</th><th>Qty received</th><th>Expected</th><th>Condition</th><th>Status</th><th></th></tr></thead>
         <tbody id="delivery-body"></tbody>
@@ -457,7 +458,7 @@ const FORMS = {
       {k:"requestedBy",l:"Requested by",t:"text"},
       {k:"requiredBy",l:"Required by",t:"date"},
       {k:"purpose",l:"Purpose / location",t:"text",full:true},
-      {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Approved","Rejected","Completed"]},
+      {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Approved","Ordered","Rejected","Completed"]},
       {k:"notes",l:"Notes",t:"textarea",full:true}
     ]
   },
@@ -799,6 +800,23 @@ function openModal(kind,id){
 }
 function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;editKindForSave=null;}
 
+// Apply a +/- change to an inventory item's on-hand qty (creates it if missing on a +)
+const RECEIVED_STATES=["Received","Inspected","Stored"];
+async function adjustInventory(materialName,delta){
+  materialName=(materialName||'').trim();delta=Number(delta)||0;
+  if(!materialName||!delta)return;
+  const inv=DB.inventory.find(i=>i.material===materialName);
+  if(inv){
+    inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand||0)+delta);
+    inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
+    if(USING_SB){ await sb.from('mep_items').update({data:stripId(inv),updated_at:new Date().toISOString()}).eq('id',inv.id); }
+  } else if(delta>0){
+    const item={material:materialName,category:'',unit:'',qtyOnHand:delta,minStock:0,location:'',status:autoStockStatus(delta,0),notes:'Auto-added from delivery'};
+    if(USING_SB){ await sb.from('mep_items').insert({kind:'inventory',data:item}); }
+    else { item.id=nextId.inventory++; DB.inventory.push(item); }
+  }
+}
+
 async function saveItem(){
   const kind=editKindForSave;
   const form=FORMS[kind];
@@ -811,22 +829,14 @@ async function saveItem(){
   btn.textContent='Saving…';btn.disabled=true;
   const ed=editId;
 
-  // Material used: deduct/restore inventory
+  // ── Store ↔ Inventory linkage ──
   if(kind==='used'){
-    if(ed){
-      const old=DB.used.find(x=>String(x.id)===String(ed));
-      if(old){
-        const inv=DB.inventory.find(i=>i.material===old.material);
-        if(inv){inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand)+Number(old.qtyUsed));inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);}
-      }
-    }
-    const inv=DB.inventory.find(i=>i.material===obj.material);
-    if(inv){
-      inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand)-Number(obj.qtyUsed));
-      inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
-      if(USING_SB){ await dbUpdate('inventory',inv.id,stripId(inv)); }
-      else save();
-    }
+    if(ed){const old=DB.used.find(x=>String(x.id)===String(ed));if(old)await adjustInventory(old.material,Number(old.qtyUsed||0));} // restore previous
+    await adjustInventory(obj.material,-Number(obj.qtyUsed||0)); // deduct new
+  }
+  if(kind==='delivery'){
+    if(ed){const old=DB.delivery.find(x=>String(x.id)===String(ed));if(old&&RECEIVED_STATES.includes(old.status))await adjustInventory(old.material,-Number(old.qtyReceived||0));} // remove previous addition
+    if(RECEIVED_STATES.includes(obj.status))await adjustInventory(obj.material,Number(obj.qtyReceived||0)); // add received qty
   }
 
   closeModal();
@@ -838,19 +848,9 @@ function stripId(o){const c={...o};delete c.id;return c;}
 
 async function del(kind,id){
   if(!confirm('Delete this entry?'))return;
-  // Restore inventory if deleting a "used" entry
-  if(kind==='used'){
-    const entry=DB.used.find(x=>String(x.id)===String(id));
-    if(entry){
-      const inv=DB.inventory.find(i=>i.material===entry.material);
-      if(inv){
-        inv.qtyOnHand=Number(inv.qtyOnHand)+Number(entry.qtyUsed);
-        inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
-        if(USING_SB){ await dbUpdate('inventory',inv.id,stripId(inv)); }
-        else save();
-      }
-    }
-  }
+  // Reverse any inventory effect this entry had
+  if(kind==='used'){const entry=DB.used.find(x=>String(x.id)===String(id));if(entry)await adjustInventory(entry.material,Number(entry.qtyUsed||0));}
+  if(kind==='delivery'){const entry=DB.delivery.find(x=>String(x.id)===String(id));if(entry&&RECEIVED_STATES.includes(entry.status))await adjustInventory(entry.material,-Number(entry.qtyReceived||0));}
   await dbDel(kind,id);
 }
 
