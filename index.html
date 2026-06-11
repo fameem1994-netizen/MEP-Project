@@ -282,7 +282,7 @@
       </div>
       <div class="info-note">📌 <b>Remaining to deliver</b> is calculated from open material requests minus received / inspected / stored delivery quantities.</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Material</th><th>Category</th><th>On hand</th><th>Remaining to deliver</th><th>Min stock</th><th>Location</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Material</th><th>Date</th><th>Category</th><th>On hand</th><th>Remaining to deliver</th><th>Min stock</th><th>Location</th><th>Status</th><th></th></tr></thead>
         <tbody id="inventory-body"></tbody>
       </table></div>
     </div>
@@ -294,7 +294,7 @@
         <button class="btn-primary" onclick="openModal('srequest')">+ New request</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Req no.</th><th>Material</th><th>Ordered Qty</th><th>Delivered Qty</th><th>Remaining Qty</th><th>Delivery Status</th><th>Requested by</th><th>Required by</th><th>Purpose</th><th>Request Status</th><th></th></tr></thead>
+        <thead><tr><th>Req no.</th><th>Material</th><th>Date</th><th>Ordered Qty</th><th>Delivered Qty</th><th>Remaining Qty</th><th>Delivery Status</th><th>Requested by</th><th>Required by</th><th>Purpose</th><th>Request Status</th><th></th></tr></thead>
         <tbody id="srequest-body"></tbody>
       </table></div>
     </div>
@@ -357,6 +357,7 @@
   </div>
 </div>
 
+<datalist id="materialList"></datalist>
 <footer>MEP Follow-Up & Monitoring · Appwrite live sync</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
@@ -465,6 +466,7 @@ const FORMS = {
     title:"Store item",
     fields:[
       {k:"material",l:"Material name",t:"text",req:true,full:true},
+      {k:"date",l:"Date",t:"date"},
       {k:"category",l:"Category",t:"select",opts:CATS},
       {k:"unit",l:"Unit (m, pcs, kg…)",t:"text"},
       {k:"minStock",l:"Min stock level",t:"number"},
@@ -478,6 +480,7 @@ const FORMS = {
     fields:[
       {k:"reqNo",l:"Request no.",t:"text"},
       {k:"material",l:"Material",t:"text",req:true,full:true},
+      {k:"date",l:"Request date",t:"date"},
       {k:"qty",l:"Qty required",t:"number"},
       {k:"unit",l:"Unit",t:"text"},
       {k:"requestedBy",l:"Requested by",t:"text"},
@@ -781,7 +784,7 @@ function onHandForMaterial(materialName){
 
 function renderInventory(){
   const b=document.getElementById('inventory-body');
-  if(!DB.inventory.length){b.innerHTML='<tr><td colspan="8" class="empty">No items in store.</td></tr>';return;}
+  if(!DB.inventory.length){b.innerHTML='<tr><td colspan="9" class="empty">No items in store.</td></tr>';return;}
   b.innerHTML=DB.inventory.map(it=>{
     const q=onHandForMaterial(it.material),m=Number(it.minStock);
     const remainingToDeliver = remainingToDeliverForMaterial(it.material);
@@ -791,6 +794,7 @@ function renderInventory(){
     const rcls=remainingToDeliver>0?'low':'';
     return `<tr>
       <td><strong>${it.material}</strong></td>
+      <td style="color:var(--muted);font-size:.8rem">${it.date||'–'}</td>
       <td><span style="color:var(--muted);font-size:.8rem">${it.category||'–'}</span></td>
       <td>
         <span class="${cls}">${q} ${it.unit||''}</span>
@@ -843,13 +847,14 @@ function deliveryStatusForRequest(req){
 
 function renderSrequest(){
   const b=document.getElementById('srequest-body');
-  if(!DB.srequest.length){b.innerHTML='<tr><td colspan="11" class="empty">No requests.</td></tr>';return;}
+  if(!DB.srequest.length){b.innerHTML='<tr><td colspan="12" class="empty">No requests.</td></tr>';return;}
   b.innerHTML=DB.srequest.map(it=>{
     const ds = deliveryStatusForRequest(it);
     const remainingColor = ds.remaining > 0 ? 'var(--red)' : 'var(--green)';
     return `<tr>
       <td style="color:var(--muted);font-size:.8rem">${it.reqNo||'–'}</td>
       <td>${it.material}</td>
+      <td style="color:var(--muted);font-size:.8rem">${it.date||'–'}</td>
       <td>${ds.ordered} ${it.unit||''}</td>
       <td style="font-weight:600;color:var(--green)">${ds.delivered} ${it.unit||''}</td>
       <td style="font-weight:600;color:${remainingColor}">${ds.remaining} ${it.unit||''}</td>
@@ -929,7 +934,15 @@ function renderAttendance(){
   </tr>`).join('');
 }
 
+function refreshMaterialList(){
+  const dl=document.getElementById('materialList');
+  if(!dl)return;
+  const names=new Set();
+  ['inventory','delivery','srequest','used','mir'].forEach(k=>{(DB[k]||[]).forEach(x=>{if(x.material)names.add(String(x.material).trim());});});
+  dl.innerHTML=[...names].filter(Boolean).sort().map(n=>`<option value="${String(n).replace(/"/g,'&quot;')}"></option>`).join('');
+}
 function renderAll(){
+  refreshMaterialList();
   renderKpis();
   renderTasks();
   ['submittal','drawing','wir','mir'].forEach(renderDoc);
@@ -986,7 +999,8 @@ function openModal(kind,id){
     else if(f.t==='textarea') inp=`<textarea id="f_${f.k}" rows="2">${val}</textarea>`;
     else {
       const autoFillAttr=(kind==='attendance'&&f.k==='empNo')?' oninput="autoFillAttendanceByEmpNo()" onchange="autoFillAttendanceByEmpNo()"':'';
-      inp=`<input id="f_${f.k}" type="${f.t}" value="${val}"${autoFillAttr}>`;
+      const listAttr=(f.k==='material')?' list="materialList" autocomplete="off"':'';
+      inp=`<input id="f_${f.k}" type="${f.t}" value="${val}"${autoFillAttr}${listAttr}>`;
     }
     return`<div class="field${f.full?' full':''}"><label>${f.l}${f.req?' *':''}</label>${inp}</div>`;
   }).join('');
@@ -1002,7 +1016,7 @@ function addUsedRow(){
   const div=document.createElement('div');
   div.className='used-row';
   div.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:center';
-  div.innerHTML=`<select class="u-mat" style="flex:2">${usedMaterialOptions()}</select>
+  div.innerHTML=`<input class="u-mat" list="materialList" autocomplete="off" placeholder="Material" style="flex:2">
     <input class="u-qty" type="number" min="0" placeholder="Qty" style="flex:1">
     <button type="button" class="btn-danger btn-sm" onclick="this.closest('.used-row').remove()">✕</button>`;
   document.getElementById('usedRows').appendChild(div);
@@ -1251,8 +1265,8 @@ function activeReportConfig(){
     drawing:{title:'Drawings',headers:['Drawing no.','Title','Type','Issued','Status'],rows:DB.drawing.map(it=>[it.drawingNo,it.title,it.drawingType,it.issuedDate,it.status])},
     wir:{title:'WIR',headers:['WIR no.','Activity','Location','Inspection date','Status'],rows:DB.wir.map(it=>[it.wirNo,it.activity,it.location,it.inspectionDate,it.status])},
     mir:{title:'MIR',headers:['MIR no.','Material','Supplier','Inspection date','Qty','Status'],rows:DB.mir.map(it=>[it.mirNo,it.material,it.supplier,it.inspectionDate,it.qty,it.status])},
-    inventory:{title:'Inventory',headers:['Material','Category','On hand','Min stock','Remaining to deliver','Location','Status'],rows:DB.inventory.map(it=>{const r=remainingToDeliverForMaterial(it.material);return[it.material,it.category,`${onHandForMaterial(it.material)} ${it.unit||''}`,`${it.minStock||0} ${it.unit||''}`,`${r} ${it.unit||''}`,it.location,autoStockStatus(onHandForMaterial(it.material),it.minStock)];})},
-    srequest:{title:'Material Requests',headers:['Req no.','Material','Ordered Qty','Delivered Qty','Remaining Qty','Delivery Status','Required by','Status'],rows:DB.srequest.map(it=>{const ds=deliveryStatusForRequest(it);return[it.reqNo,it.material,`${ds.ordered} ${it.unit||''}`,`${ds.delivered} ${it.unit||''}`,`${ds.remaining} ${it.unit||''}`,ds.status,it.requiredBy,it.status];})},
+    inventory:{title:'Inventory',headers:['Material','Date','Category','On hand','Min stock','Remaining to deliver','Location','Status'],rows:DB.inventory.map(it=>{const r=remainingToDeliverForMaterial(it.material);return[it.material,it.date,it.category,`${onHandForMaterial(it.material)} ${it.unit||''}`,`${it.minStock||0} ${it.unit||''}`,`${r} ${it.unit||''}`,it.location,autoStockStatus(onHandForMaterial(it.material),it.minStock)];})},
+    srequest:{title:'Material Requests',headers:['Req no.','Material','Date','Ordered Qty','Delivered Qty','Remaining Qty','Delivery Status','Required by','Status'],rows:DB.srequest.map(it=>{const ds=deliveryStatusForRequest(it);return[it.reqNo,it.material,it.date,`${ds.ordered} ${it.unit||''}`,`${ds.delivered} ${it.unit||''}`,`${ds.remaining} ${it.unit||''}`,ds.status,it.requiredBy,it.status];})},
     delivery:{title:'Deliveries',headers:['Del no.','Req no.','Material','Supplier','Qty received','Expected','Condition','Status'],rows:DB.delivery.map(it=>[it.deliveryNo,it.reqNo,it.material,it.supplier,it.qtyReceived,it.expectedDate,it.condition,it.status])},
     used:{title:'Material Used',headers:['Date','Material','Qty used','Area / Location','Used by','Notes'],rows:DB.used.map(it=>[it.date,it.material,it.qtyUsed,it.area,it.usedBy,it.notes])},
     attendance:{title:'Attendance',headers:['Date','Emp. No.','Name','Trade / Team','Working Location','In','Out','Hours','Status','Remarks'],rows:DB.attendance.map(it=>[it.date,it.empNo,it.name,it.trade,it.workLocation,it.timeIn,it.timeOut,it.hours,it.status,it.remarks])}
