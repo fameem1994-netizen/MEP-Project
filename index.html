@@ -357,16 +357,22 @@
   </div>
 </div>
 
-<footer>MEP Follow-Up & Monitoring · Supabase live sync</footer>
+<footer>MEP Follow-Up & Monitoring · Appwrite live sync</footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-/* ── SUPABASE KEYS ── */
-const SUPABASE_URL      = "https://gkevsflbwajsovpmmhfy.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZXZzZmxid2Fqc292cG1taGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5ODc2MTYsImV4cCI6MjA5NjU2MzYxNn0.BA8LYAL210ubAxDUTIeF68-FEd4PLgWJbBU78m9rstE";
-const USING_SB = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
-let sb = USING_SB ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+/* ── APPWRITE BACKEND ──  (see SETUP-appwrite.md for how to fill these in) */
+const AW_ENDPOINT   = "https://nyc.cloud.appwrite.io/v1";   // API Endpoint
+const AW_PROJECT    = "6a29c9f400074b7c86f8";   // Project ID
+const AW_DATABASE   = "6a29cb49002061097726";   // Database ID
+const AW_COLLECTION = "mepdatabase";   // Collection (Table) ID
+const USING_AW = !!(AW_PROJECT && AW_DATABASE && AW_COLLECTION);
+let aw=null, awDB=null;
+if(USING_AW){
+  aw=new Appwrite.Client().setEndpoint(AW_ENDPOINT).setProject(AW_PROJECT);
+  awDB=new Appwrite.Databases(aw);
+}
 
 /* ── CONSTANTS ── */
 const DISC = ["Mechanical","Electrical","Plumbing","Fire Fighting","HVAC","ELV / Low Voltage","General"];
@@ -535,35 +541,40 @@ const LKEY = "mep_v3";
 
 /* ── PERSIST ── */
 async function loadAll(){
-  if(USING_SB){
+  if(USING_AW){
     try{
-      const {data,error}=await sb.from('mep_items').select('*').order('created_at',{ascending:true});
-      if(error)throw error;
+      let docs=[],page=0;
+      while(true){
+        const res=await awDB.listDocuments(AW_DATABASE,AW_COLLECTION,[Appwrite.Query.limit(100),Appwrite.Query.offset(page*100),Appwrite.Query.orderAsc('$createdAt')]);
+        docs=docs.concat(res.documents||[]);
+        if(!res.documents||res.documents.length<100)break;
+        if(++page>100)break;
+      }
       Object.keys(DB).forEach(k=>DB[k]=[]);
-      data.forEach(r=>{if(DB[r.kind])DB[r.kind].push({id:r.id,...r.data});});
-      banner('ok','<span class="dot" style="background:#22c55e"></span>Live — syncing with team.');
+      docs.forEach(d=>{let data={};try{data=JSON.parse(d.data||'{}');}catch(e){}if(DB[d.kind])DB[d.kind].push({id:d.$id,...data});});
+      banner('ok','<span class="dot" style="background:#22c55e"></span>Live — connected to Appwrite.');
       document.getElementById('liveStatus').innerHTML='● live';
-    }catch(e){banner('err','DB error: '+(e.message||e));}
+    }catch(e){banner('err','Appwrite error: '+(e.message||e)+' — check the IDs in the file and that a Web platform for this site is added in Appwrite.');}
   } else {
     try{const s=JSON.parse(localStorage.getItem(LKEY));if(s&&s.task)Object.assign(DB,s);}catch(e){}
     if(!DB.task.length) seed();
-    banner('warn','⚙ Demo mode — data stored locally.');
+    banner('warn','⚙ Demo mode — data stored locally. Add your Appwrite IDs in the file to share with your team.');
     document.getElementById('liveStatus').textContent='demo';
   }
   renderAll();
 }
-function save(){if(!USING_SB)localStorage.setItem(LKEY,JSON.stringify(DB));}
+function save(){if(!USING_AW)localStorage.setItem(LKEY,JSON.stringify(DB));}
 
 async function dbAdd(kind,obj){
-  if(USING_SB){const{error}=await sb.from('mep_items').insert({kind,data:obj});if(error){alert(error.message);return;}await loadAll();}
+  if(USING_AW){try{await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind,data:JSON.stringify(obj)});}catch(e){alert('Save failed: '+(e.message||e));return;}await loadAll();}
   else{obj.id=nextId[kind]++;DB[kind].push(obj);save();renderAll();}
 }
 async function dbUpdate(kind,id,obj){
-  if(USING_SB){const{error}=await sb.from('mep_items').update({data:obj,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return;}await loadAll();}
+  if(USING_AW){try{await awDB.updateDocument(AW_DATABASE,AW_COLLECTION,id,{data:JSON.stringify(obj)});}catch(e){alert('Update failed: '+(e.message||e));return;}await loadAll();}
   else{const i=DB[kind].findIndex(x=>String(x.id)===String(id));obj.id=id;DB[kind][i]=obj;save();renderAll();}
 }
 async function dbDel(kind,id){
-  if(USING_SB){const{error}=await sb.from('mep_items').delete().eq('id',id);if(error){alert(error.message);return;}await loadAll();}
+  if(USING_AW){try{await awDB.deleteDocument(AW_DATABASE,AW_COLLECTION,id);}catch(e){alert('Delete failed: '+(e.message||e));return;}await loadAll();}
   else{DB[kind]=DB[kind].filter(x=>String(x.id)!==String(id));save();renderAll();}
 }
 
@@ -971,10 +982,10 @@ async function adjustInventory(materialName,delta){
   if(inv){
     inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand||0)+delta);
     inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
-    if(USING_SB){ await sb.from('mep_items').update({data:stripId(inv),updated_at:new Date().toISOString()}).eq('id',inv.id); }
+    if(USING_AW){ await awDB.updateDocument(AW_DATABASE,AW_COLLECTION,inv.id,{data:JSON.stringify(stripId(inv))}); }
   } else if(delta>0){
     const item={material:materialName,category:'',unit:'',qtyOnHand:delta,minStock:0,location:'',status:autoStockStatus(delta,0),notes:'Auto-added from delivery'};
-    if(USING_SB){ await sb.from('mep_items').insert({kind:'inventory',data:item}); }
+    if(USING_AW){ await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'inventory',data:JSON.stringify(item)}); }
     else { item.id=nextId.inventory++; DB.inventory.push(item); }
   }
 }
@@ -1099,6 +1110,7 @@ async function importExcelFile(e){
     try{ wb=XLSX.read(ev.target.result,{type:'array'}); }
     catch(err){alert('Could not read file: '+err.message);return;}
     let totalAdd=0,totalUpd=0,sheetsDone=0;const summary=[];
+    const allInserts=[],allUpdates=[];
     for(const sheetName of wb.SheetNames){
       const kind=nameToKind[sheetName.toLowerCase().trim()];
       if(!kind)continue;
@@ -1130,17 +1142,22 @@ async function importExcelFile(e){
         if(keyFields){const kv=keyOf(obj);if(kv.replace(/\|/g,'').trim()!=='')existing=DB[kind].find(x=>keyOf(x)===kv);}
         if(existing)updates.push({existing,obj});else inserts.push(obj);
       });
-      if(USING_SB){
-        if(inserts.length){const {error}=await sb.from('mep_items').insert(inserts.map(o=>({kind,data:o})));if(error){alert('Import failed ('+sheetName+'): '+error.message);return;}}
-        for(const u of updates){const merged={...u.existing,...u.obj};delete merged.id;const {error}=await sb.from('mep_items').update({data:merged,updated_at:new Date().toISOString()}).eq('id',u.existing.id);if(error){alert('Update failed ('+sheetName+'): '+error.message);return;}}
-      }else{
-        inserts.forEach(o=>{o.id=nextId[kind]++;DB[kind].push(o);});
-        updates.forEach(u=>{const i=DB[kind].findIndex(x=>String(x.id)===String(u.existing.id));const merged={...u.existing,...u.obj};merged.id=u.existing.id;DB[kind][i]=merged;});
-      }
+      inserts.forEach(o=>allInserts.push({kind,data:o}));
+      updates.forEach(u=>{const merged={...u.existing,...u.obj};delete merged.id;allUpdates.push({kind,id:u.existing.id,data:merged});});
       totalAdd+=inserts.length;totalUpd+=updates.length;sheetsDone++;
       summary.push(SHEET_NAME[kind]+': +'+inserts.length+' new, '+updates.length+' updated');
     }
-    if(USING_SB) await loadAll(); else { save();renderAll(); }
+    if(USING_AW){
+      try{
+        for(const r of allInserts){await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:r.kind,data:JSON.stringify(r.data)});}
+        for(const u of allUpdates){await awDB.updateDocument(AW_DATABASE,AW_COLLECTION,u.id,{data:JSON.stringify(u.data)});}
+      }catch(e){alert('Import failed: '+(e.message||e));return;}
+      await loadAll();
+    } else {
+      allInserts.forEach(r=>{const o={...r.data,id:nextId[r.kind]++};DB[r.kind].push(o);});
+      allUpdates.forEach(u=>{const i=DB[u.kind].findIndex(x=>String(x.id)===String(u.id));if(i>=0)DB[u.kind][i]={...u.data,id:u.id};});
+      save();renderAll();
+    }
     if(!sheetsDone) alert('No matching sheets found.\nUse a file exported from this app — sheet names should be: Tasks, Submittals, Drawings, WIR, MIR, Inventory, Requests, Deliveries, Material Used.');
     else alert('Import complete — '+totalAdd+' added, '+totalUpd+' updated.\n\n'+summary.join('\n'));
   };
@@ -1199,10 +1216,8 @@ function printCurrentReport(){
 }
 
 /* ── LIVE SYNC ── */
-if(USING_SB){
-  sb.channel('mep_live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'mep_items'},()=>loadAll())
-    .subscribe();
+if(USING_AW){
+  try{ aw.subscribe('databases.'+AW_DATABASE+'.collections.'+AW_COLLECTION+'.documents',()=>{ if(!document.getElementById('modalBg').classList.contains('open')) loadAll(); }); }catch(e){}
 }
 
 loadAll();
