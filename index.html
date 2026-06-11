@@ -1061,8 +1061,8 @@ const DEDUP_KEY={
   wir:['wirNo'],
   mir:['mirNo'],
   inventory:['material'],
-  srequest:['reqNo'],
-  delivery:['deliveryNo'],
+  srequest:['reqNo','material'],
+  delivery:['deliveryNo','material'],
   used:['date','material','qtyUsed'],
   attendance:['date','empNo','name']
 };
@@ -1144,11 +1144,16 @@ async function importExcelFile(e){
       if(!records.length)continue;
       const keyFields=DEDUP_KEY[kind]||null;
       const keyOf=(o)=>keyFields?keyFields.map(f=>String(o[f]??'').toLowerCase().trim()).join('||'):'';
+      const sigOf=(o)=>form.fields.map(f=>String(o[f.k]??'').trim().toLowerCase()).join('¦');
       const inserts=[],updates=[];
       records.forEach(obj=>{
         let existing=null;
         if(keyFields){const kv=keyOf(obj);if(kv.replace(/\|/g,'').trim()!=='')existing=DB[kind].find(x=>keyOf(x)===kv);}
-        if(existing)updates.push({existing,obj});else inserts.push(obj);
+        if(existing){updates.push({existing,obj});return;}
+        // No key match: if an identical row already exists, skip it so re-importing the same file never duplicates.
+        const s=sigOf(obj);
+        if(DB[kind].some(x=>sigOf(x)===s))return;
+        inserts.push(obj);
       });
       inserts.forEach(o=>allInserts.push({kind,data:o}));
       updates.forEach(u=>{const merged={...u.existing,...u.obj};delete merged.id;allUpdates.push({kind,id:u.existing.id,data:merged});});
