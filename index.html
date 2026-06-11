@@ -937,7 +937,7 @@ function renderAll(){
 }
 
 /* ── MODAL ── */
-let editKindForSave=null;
+let editKindForSave=null, usedMulti=false;
 
 function latestEmployeeDetailsByNo(empNo){
   empNo=String(empNo||'').trim().toLowerCase();
@@ -966,6 +966,8 @@ function autoFillAttendanceByEmpNo(){
 function openModal(kind,id){
   editKindForSave=kind;
   editId=(id===undefined||id===null||id==='')?null:id;
+  usedMulti=false;
+  if(kind==='used' && !editId){ openUsedModal(); return; }  // multi-material entry for new usage
   const form=FORMS[kind];
   const item=editId?DB[kind].find(x=>String(x.id)===String(editId)):{};
 
@@ -990,7 +992,60 @@ function openModal(kind,id){
   }).join('');
   document.getElementById('modalBg').classList.add('open');
 }
-function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;editKindForSave=null;}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;editKindForSave=null;usedMulti=false;}
+
+/* ── Material Used: log several materials in one entry ── */
+function usedMaterialOptions(){
+  return ['<option value="">— material —</option>'].concat(DB.inventory.map(i=>`<option>${i.material}</option>`)).join('');
+}
+function addUsedRow(){
+  const div=document.createElement('div');
+  div.className='used-row';
+  div.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:center';
+  div.innerHTML=`<select class="u-mat" style="flex:2">${usedMaterialOptions()}</select>
+    <input class="u-qty" type="number" min="0" placeholder="Qty" style="flex:1">
+    <button type="button" class="btn-danger btn-sm" onclick="this.closest('.used-row').remove()">✕</button>`;
+  document.getElementById('usedRows').appendChild(div);
+}
+function openUsedModal(){
+  editKindForSave='used'; editId=null; usedMulti=true;
+  document.getElementById('modalTitle').textContent='New Material used';
+  document.getElementById('formFields').innerHTML=`
+    <div class="field"><label>Date *</label><input id="f_date" type="date"></div>
+    <div class="field"><label>Used by</label><input id="f_usedBy" type="text"></div>
+    <div class="field full"><label>Area / location</label><input id="f_area" type="text"></div>
+    <div class="field full"><label>Materials used *</label>
+      <div id="usedRows"></div>
+      <button type="button" class="btn-ghost btn-sm" style="margin-top:6px" onclick="addUsedRow()">+ Add material</button>
+    </div>
+    <div class="field full"><label>Notes</label><textarea id="f_notes" rows="2"></textarea></div>`;
+  addUsedRow(); addUsedRow();
+  document.getElementById('modalBg').classList.add('open');
+}
+async function saveUsedMulti(){
+  const date=document.getElementById('f_date').value.trim();
+  const usedBy=document.getElementById('f_usedBy').value.trim();
+  const area=document.getElementById('f_area').value.trim();
+  const notes=document.getElementById('f_notes').value.trim();
+  if(!date){alert('Please enter the Date.');return;}
+  const entries=[];
+  document.querySelectorAll('#usedRows .used-row').forEach(r=>{
+    const material=r.querySelector('.u-mat').value.trim();
+    const qtyUsed=r.querySelector('.u-qty').value.trim();
+    if(material&&qtyUsed)entries.push({date,material,qtyUsed,area,usedBy,notes});
+  });
+  if(!entries.length){alert('Add at least one material with a quantity.');return;}
+  const btn=document.getElementById('saveBtn');btn.textContent='Saving…';btn.disabled=true;
+  closeModal();
+  if(USING_AW){
+    try{ for(const e of entries){ await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'used',data:JSON.stringify(e)}); } }
+    catch(err){alert('Save failed: '+(err.message||err));btn.textContent='Save';btn.disabled=false;return;}
+    await loadAll();
+  }else{
+    entries.forEach(e=>{e.id=nextId.used++;DB.used.push(e);});save();renderAll();
+  }
+  btn.textContent='Save';btn.disabled=false;
+}
 
 const RECEIVED_STATES=["Received","Inspected","Stored"];
 // On-hand is computed live (received − used), so we never mutate stored stock numbers.
@@ -1006,6 +1061,7 @@ async function ensureInventoryItem(materialName){
 }
 
 async function saveItem(){
+  if(usedMulti && editKindForSave==='used'){ await saveUsedMulti(); return; }
   const kind=editKindForSave;
   const form=FORMS[kind];
   const obj={};
