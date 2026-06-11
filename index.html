@@ -467,7 +467,6 @@ const FORMS = {
       {k:"material",l:"Material name",t:"text",req:true,full:true},
       {k:"category",l:"Category",t:"select",opts:CATS},
       {k:"unit",l:"Unit (m, pcs, kg…)",t:"text"},
-      {k:"qtyOnHand",l:"Qty on hand",t:"number"},
       {k:"minStock",l:"Min stock level",t:"number"},
       {k:"location",l:"Storage location",t:"text"},
       {k:"status",l:"Status",t:"select",opts:["In Stock","Low Stock","Out of Stock"]},
@@ -760,11 +759,31 @@ function remainingToDeliverForMaterial(materialName){
     .reduce((sum, req) => sum + deliveryStatusForRequest(req).remaining, 0);
 }
 
+// On-hand is computed live so it can never drift: total received − total used.
+function receivedQtyForMaterial(materialName){
+  const material=String(materialName||'').trim().toLowerCase();
+  if(!material)return 0;
+  return DB.delivery
+    .filter(d=>RECEIVED_STATES.includes(d.status))
+    .filter(d=>String(d.material||'').trim().toLowerCase()===material)
+    .reduce((s,d)=>s+Number(d.qtyReceived||0),0);
+}
+function usedQtyForMaterial(materialName){
+  const material=String(materialName||'').trim().toLowerCase();
+  if(!material)return 0;
+  return DB.used
+    .filter(u=>String(u.material||'').trim().toLowerCase()===material)
+    .reduce((s,u)=>s+Number(u.qtyUsed||0),0);
+}
+function onHandForMaterial(materialName){
+  return receivedQtyForMaterial(materialName)-usedQtyForMaterial(materialName);
+}
+
 function renderInventory(){
   const b=document.getElementById('inventory-body');
   if(!DB.inventory.length){b.innerHTML='<tr><td colspan="8" class="empty">No items in store.</td></tr>';return;}
   b.innerHTML=DB.inventory.map(it=>{
-    const q=Number(it.qtyOnHand),m=Number(it.minStock);
+    const q=onHandForMaterial(it.material),m=Number(it.minStock);
     const remainingToDeliver = remainingToDeliverForMaterial(it.material);
     const pct=m>0?Math.min(100,Math.round(q/m*100)):100;
     const bc=q===0?'#ef4444':q<=m?'#f59e0b':'#22c55e';
@@ -780,7 +799,7 @@ function renderInventory(){
       <td><span class="${rcls}" style="font-weight:600">${remainingToDeliver} ${it.unit||''}</span></td>
       <td style="color:var(--muted)">${m} ${it.unit||''}</td>
       <td style="color:var(--muted);font-size:.8rem">${it.location||'–'}</td>
-      <td>${badge(it.status)}</td>
+      <td>${badge(autoStockStatus(q,m))}</td>
       <td><div class="row-actions">
         <button class="btn-ghost btn-sm" onclick="openModal('inventory','${it.id}')">Edit</button>
         <button class="btn-danger btn-sm" onclick="del('inventory','${it.id}')">✕</button>
@@ -973,21 +992,17 @@ function openModal(kind,id){
 }
 function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;editKindForSave=null;}
 
-// Apply a +/- change to an inventory item's on-hand qty (creates it if missing on a +)
 const RECEIVED_STATES=["Received","Inspected","Stored"];
-async function adjustInventory(materialName,delta){
-  materialName=(materialName||'').trim();delta=Number(delta)||0;
-  if(!materialName||!delta)return;
-  const inv=DB.inventory.find(i=>i.material===materialName);
-  if(inv){
-    inv.qtyOnHand=Math.max(0,Number(inv.qtyOnHand||0)+delta);
-    inv.status=autoStockStatus(inv.qtyOnHand,inv.minStock);
-    if(USING_AW){ await awDB.updateDocument(AW_DATABASE,AW_COLLECTION,inv.id,{data:JSON.stringify(stripId(inv))}); }
-  } else if(delta>0){
-    const item={material:materialName,category:'',unit:'',qtyOnHand:delta,minStock:0,location:'',status:autoStockStatus(delta,0),notes:'Auto-added from delivery'};
-    if(USING_AW){ await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'inventory',data:JSON.stringify(item)}); }
-    else { item.id=nextId.inventory++; DB.inventory.push(item); }
-  }
+// On-hand is computed live (received − used), so we never mutate stored stock numbers.
+// We only make sure a delivered material has a row in the Inventory list.
+async function ensureInventoryItem(materialName){
+  materialName=(materialName||'').trim();
+  if(!materialName)return;
+  const exists=DB.inventory.find(i=>String(i.material||'').trim().toLowerCase()===materialName.toLowerCase());
+  if(exists)return;
+  const item={material:materialName,category:'',unit:'',qtyOnHand:0,minStock:0,location:'',status:'In Stock',notes:'Auto-added from delivery'};
+  if(USING_AW){ await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'inventory',data:JSON.stringify(item)}); }
+  else { item.id=nextId.inventory++; DB.inventory.push(item); }
 }
 
 async function saveItem(){
@@ -1009,14 +1024,9 @@ async function saveItem(){
   btn.textContent='Saving…';btn.disabled=true;
   const ed=editId;
 
-  // ── Store ↔ Inventory linkage ──
-  if(kind==='used'){
-    if(ed){const old=DB.used.find(x=>String(x.id)===String(ed));if(old)await adjustInventory(old.material,Number(old.qtyUsed||0));} // restore previous
-    await adjustInventory(obj.material,-Number(obj.qtyUsed||0)); // deduct new
-  }
-  if(kind==='delivery'){
-    if(ed){const old=DB.delivery.find(x=>String(x.id)===String(ed));if(old&&RECEIVED_STATES.includes(old.status))await adjustInventory(old.material,-Number(old.qtyReceived||0));} // remove previous addition
-    if(RECEIVED_STATES.includes(obj.status))await adjustInventory(obj.material,Number(obj.qtyReceived||0)); // add received qty
+  // ── Store: make sure a delivered material shows up in Inventory (on-hand is computed live) ──
+  if(kind==='delivery' && RECEIVED_STATES.includes(obj.status)){
+    await ensureInventoryItem(obj.material);
   }
 
   closeModal();
@@ -1028,9 +1038,7 @@ function stripId(o){const c={...o};delete c.id;return c;}
 
 async function del(kind,id){
   if(!confirm('Delete this entry?'))return;
-  // Reverse any inventory effect this entry had
-  if(kind==='used'){const entry=DB.used.find(x=>String(x.id)===String(id));if(entry)await adjustInventory(entry.material,Number(entry.qtyUsed||0));}
-  if(kind==='delivery'){const entry=DB.delivery.find(x=>String(x.id)===String(id));if(entry&&RECEIVED_STATES.includes(entry.status))await adjustInventory(entry.material,-Number(entry.qtyReceived||0));}
+  // On-hand is computed from deliveries/usage, so deleting just removes the row — no manual stock fix needed.
   await dbDel(kind,id);
 }
 
@@ -1182,7 +1190,7 @@ function activeReportConfig(){
     drawing:{title:'Drawings',headers:['Drawing no.','Title','Type','Issued','Status'],rows:DB.drawing.map(it=>[it.drawingNo,it.title,it.drawingType,it.issuedDate,it.status])},
     wir:{title:'WIR',headers:['WIR no.','Activity','Location','Inspection date','Status'],rows:DB.wir.map(it=>[it.wirNo,it.activity,it.location,it.inspectionDate,it.status])},
     mir:{title:'MIR',headers:['MIR no.','Material','Supplier','Inspection date','Qty','Status'],rows:DB.mir.map(it=>[it.mirNo,it.material,it.supplier,it.inspectionDate,it.qty,it.status])},
-    inventory:{title:'Inventory',headers:['Material','Category','On hand','Min stock','Remaining to deliver','Location','Status'],rows:DB.inventory.map(it=>{const r=remainingToDeliverForMaterial(it.material);return[it.material,it.category,`${it.qtyOnHand||0} ${it.unit||''}`,`${it.minStock||0} ${it.unit||''}`,`${r} ${it.unit||''}`,it.location,it.status];})},
+    inventory:{title:'Inventory',headers:['Material','Category','On hand','Min stock','Remaining to deliver','Location','Status'],rows:DB.inventory.map(it=>{const r=remainingToDeliverForMaterial(it.material);return[it.material,it.category,`${onHandForMaterial(it.material)} ${it.unit||''}`,`${it.minStock||0} ${it.unit||''}`,`${r} ${it.unit||''}`,it.location,autoStockStatus(onHandForMaterial(it.material),it.minStock)];})},
     srequest:{title:'Material Requests',headers:['Req no.','Material','Ordered Qty','Delivered Qty','Remaining Qty','Delivery Status','Required by','Status'],rows:DB.srequest.map(it=>{const ds=deliveryStatusForRequest(it);return[it.reqNo,it.material,`${ds.ordered} ${it.unit||''}`,`${ds.delivered} ${it.unit||''}`,`${ds.remaining} ${it.unit||''}`,ds.status,it.requiredBy,it.status];})},
     delivery:{title:'Deliveries',headers:['Del no.','Req no.','Material','Supplier','Qty received','Expected','Condition','Status'],rows:DB.delivery.map(it=>[it.deliveryNo,it.reqNo,it.material,it.supplier,it.qtyReceived,it.expectedDate,it.condition,it.status])},
     used:{title:'Material Used',headers:['Date','Material','Qty used','Area / Location','Used by','Notes'],rows:DB.used.map(it=>[it.date,it.material,it.qtyUsed,it.area,it.usedBy,it.notes])},
