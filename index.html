@@ -535,7 +535,7 @@ const FORMS = {
 };
 
 /* ── STATE ── */
-let DB = {task:[],submittal:[],drawing:[],wir:[],mir:[],inventory:[],srequest:[],delivery:[],used:[],attendance:[]};
+let DB = {task:[],progress:[],submittal:[],drawing:[],wir:[],mir:[],inventory:[],srequest:[],delivery:[],used:[],attendance:[]};
 let nextId = {};
 Object.keys(DB).forEach(k=>nextId[k]=1);
 let editId=null;
@@ -701,6 +701,56 @@ function switchStoreSub(id,btn){
 }
 
 /* ── RENDER TASKS ── */
+const openTasks=new Set();
+function taskProgressHtml(taskId){
+  const rows=(DB.progress||[]).filter(p=>String(p.taskId)===String(taskId))
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  if(!rows.length) return '<div style="color:var(--muted);font-size:.8rem;padding:4px 0">No daily updates yet.</div>';
+  return '<table style="min-width:auto;margin-top:4px"><thead><tr><th>Date</th><th>% Complete</th><th>Work done / notes</th><th></th></tr></thead><tbody>'+
+    rows.map(p=>`<tr>
+      <td style="font-size:.8rem">${p.date||'–'}</td>
+      <td style="font-size:.8rem">${(p.progress!==''&&p.progress!=null)?p.progress+'%':'–'}</td>
+      <td style="font-size:.8rem">${p.notes||'–'}</td>
+      <td><button class="btn-danger btn-sm" onclick="delProgress('${p.id}')">✕</button></td>
+    </tr>`).join('')+'</tbody></table>';
+}
+function toggleTaskDetail(id,el){
+  id=String(id);
+  const row=document.getElementById('detail-'+id);
+  if(!row)return;
+  const show=row.style.display==='none';
+  row.style.display=show?'table-row':'none';
+  if(show)openTasks.add(id);else openTasks.delete(id);
+  if(el)el.textContent=show?'▾':'▸';
+}
+async function addProgress(taskId){
+  const dEl=document.getElementById('pdate-'+taskId),pEl=document.getElementById('ppct-'+taskId),nEl=document.getElementById('pnote-'+taskId);
+  const date=(dEl&&dEl.value)||today();
+  const pct=pEl?pEl.value.trim():'';
+  const note=nEl?nEl.value.trim():'';
+  if(pct===''&&note===''){alert('Enter % complete and/or a note.');return;}
+  openTasks.add(String(taskId));
+  const entry={taskId:String(taskId),date,progress:pct,notes:note};
+  const task=DB.task.find(t=>String(t.id)===String(taskId));
+  let taskUpd=null;
+  if(task&&pct!==''){taskUpd={...task};delete taskUpd.id;taskUpd.progress=pct;
+    if(Number(pct)>=100)taskUpd.status='Completed';else if(taskUpd.status==='Not Started')taskUpd.status='In Progress';}
+  if(USING_AW){
+    try{
+      await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'progress',data:JSON.stringify(entry)});
+      if(taskUpd) await awDB.updateDocument(AW_DATABASE,AW_COLLECTION,task.id,{data:JSON.stringify(taskUpd)});
+    }catch(e){alert('Save failed: '+(e.message||e));return;}
+    await loadAll();
+  }else{
+    entry.id=nextId.progress++;DB.progress.push(entry);
+    if(taskUpd)Object.assign(task,taskUpd);
+    save();renderAll();
+  }
+}
+async function delProgress(id){
+  if(!confirm('Delete this update?'))return;
+  await dbDel('progress',id);
+}
 function renderTasks(){
   const fs=document.getElementById('task-status').value;
   const fd=document.getElementById('task-disc').value;
@@ -709,8 +759,10 @@ function renderTasks(){
   });
   const b=document.getElementById('task-body');
   if(!rows.length){b.innerHTML='<tr><td colspan="8" class="empty">No tasks. Click "+ Add task".</td></tr>';return;}
-  b.innerHTML=rows.map(it=>`<tr>
-    <td>${it.title}</td>
+  b.innerHTML=rows.map(it=>{
+    const open=openTasks.has(String(it.id));
+    return `<tr>
+    <td><span onclick="toggleTaskDetail('${it.id}',this)" style="cursor:pointer;user-select:none;color:var(--accent);margin-right:5px">${open?'▾':'▸'}</span><strong>${it.title}</strong></td>
     <td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td>
     <td>${it.owner||'–'}</td>
     <td><span class="prio-dot" style="background:${PRIO_C[it.priority]||'var(--grey)'}"></span>${it.priority||'–'}</td>
@@ -721,7 +773,21 @@ function renderTasks(){
       <button class="btn-ghost btn-sm" onclick="openModal('task','${it.id}')">Edit</button>
       <button class="btn-danger btn-sm" onclick="del('task','${it.id}')">✕</button>
     </div></td>
-  </tr>`).join('');
+  </tr>
+  <tr class="task-detail" id="detail-${it.id}" style="display:${open?'table-row':'none'}">
+    <td colspan="8" style="background:rgba(0,0,0,.18)">
+      <div style="padding:8px 6px">
+        <div style="font-weight:600;margin-bottom:4px">📅 Daily progress</div>
+        ${taskProgressHtml(it.id)}
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
+          <input type="date" id="pdate-${it.id}" value="${today()}">
+          <input type="number" id="ppct-${it.id}" placeholder="% complete" min="0" max="100" style="width:120px">
+          <input type="text" id="pnote-${it.id}" placeholder="Work done / notes" style="flex:1;min-width:180px">
+          <button class="btn-primary btn-sm" onclick="addProgress('${it.id}')">+ Add update</button>
+        </div>
+      </div>
+    </td>
+  </tr>`;}).join('');
 }
 
 /* ── RENDER DOCS ── */
