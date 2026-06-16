@@ -4,10 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MEP Project Follow-Up & Monitoring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#eef2f7;--panel:#ffffff;--panel2:#f1f5f9;--line:#d9e1ec;
-    --text:#1e293b;--muted:#64748b;--accent:#3b6fa8;--accent2:#2f5d90;
+    --bg:#eef2f7;--panel:#ffffff;--panel2:#eef2f7;--line:#cbd5e1;
+    --text:#1e293b;--muted:#566175;--accent:#3b6fa8;--accent2:#2f5d90;
     --green:#16a34a;--amber:#d97706;--red:#dc2626;--grey:#94a3b8;--blue:#2563eb;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -113,7 +116,13 @@
   @media print{header .toolbar,.main-tabs,.sub-tabs,.filters,.row-actions,.modal-bg,.banner{display:none!important}body{background:#fff;color:#000}}
 
   /* ── Light corporate theme ── */
-  body{background:#eef2f7}
+  *{font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+  body{background:#eef2f7;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;color:#0f172a}
+  td{color:#1e293b}
+  th{font-weight:700;color:#475569}
+  strong{color:#0f172a}
+  .badge{font-weight:600}
+  tbody td{border-bottom-color:#e2e8f0}
   header{background:linear-gradient(135deg,#34557e 0%,#3f6fa5 100%);border-bottom:1px solid rgba(52,85,126,.4);box-shadow:0 2px 10px rgba(15,23,42,.15)}
   header h1{font-size:1.3rem;letter-spacing:.2px;color:#fff}
   header .toolbar .btn-ghost{background:rgba(255,255,255,.18);color:#fff}
