@@ -7,7 +7,7 @@
 <style>
   :root{
     --bg:#eef2f7;--panel:#ffffff;--panel2:#f1f5f9;--line:#d9e1ec;
-    --text:#1e293b;--muted:#64748b;--accent:#2563eb;--accent2:#1d4ed8;
+    --text:#1e293b;--muted:#64748b;--accent:#3b6fa8;--accent2:#2f5d90;
     --green:#16a34a;--amber:#d97706;--red:#dc2626;--grey:#94a3b8;--blue:#2563eb;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -114,7 +114,7 @@
 
   /* ── Light corporate theme ── */
   body{background:#eef2f7}
-  header{background:linear-gradient(135deg,#1e40af 0%,#2563eb 55%,#3b82f6 100%);border-bottom:1px solid rgba(37,99,235,.3);box-shadow:0 2px 10px rgba(2,32,71,.18)}
+  header{background:linear-gradient(135deg,#34557e 0%,#3f6fa5 100%);border-bottom:1px solid rgba(52,85,126,.4);box-shadow:0 2px 10px rgba(15,23,42,.15)}
   header h1{font-size:1.3rem;letter-spacing:.2px;color:#fff}
   header .toolbar .btn-ghost{background:rgba(255,255,255,.18);color:#fff}
   header .toolbar .btn-ghost:hover{background:rgba(255,255,255,.32)}
@@ -125,6 +125,7 @@
   .kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.12)}
   .kpi .label{font-weight:600;color:var(--muted)}
   .kpi .val{font-size:1.95rem;color:#0f172a}
+  .kpi.clickable{cursor:pointer}
   .progress-track{background:#e2e8f0}
   .main-tab{font-weight:600}
   .sub-tab.active{font-weight:600}
@@ -714,15 +715,15 @@ function renderKpis(){
   const openWIR=DB.wir.filter(x=>!["Accepted","Closed","Not Accepted"].includes(x.status)).length
               +DB.mir.filter(x=>!["Accepted","Closed","Not Accepted"].includes(x.status)).length;
   document.getElementById('kpis').innerHTML=`
-    <div class="kpi"><div class="label">Overall progress</div><div class="val">${avg}%</div>
+    <div class="kpi clickable" onclick="goMain('tasks')"><div class="label">Overall progress</div><div class="val">${avg}%</div>
       <div class="progress-track"><div class="progress-fill" style="width:${avg}%"></div></div></div>
-    <div class="kpi"><div class="label">Tasks completed</div><div class="val">${done}/${t.length}</div><div class="sub">activities closed</div></div>
-    <div class="kpi"><div class="label">Open submittals</div><div class="val">${openSub}</div><div class="sub">awaiting approval</div></div>
-    <div class="kpi"><div class="label">Open drawings</div><div class="val">${openDwg}</div><div class="sub">awaiting approval</div></div>
-    <div class="kpi"><div class="label">Open WIR / MIR</div><div class="val">${openWIR}</div><div class="sub">pending inspection</div></div>
-    <div class="kpi"><div class="label">⚠ Low stock</div><div class="val" style="color:${lowStock?'var(--amber)':'var(--green)'}">${lowStock}</div><div class="sub">items need reorder</div></div>
-    <div class="kpi"><div class="label">🚚 Pending deliveries</div><div class="val" style="color:${pendDel?'var(--blue)':'var(--green)'}">${pendDel}</div><div class="sub">material lines remaining</div></div>
-    <div class="kpi"><div class="label">🕒 Present today</div><div class="val" style="color:var(--green)">${todayAttendance}</div><div class="sub">attendance marked present</div></div>`;
+    <div class="kpi clickable" onclick="goMain('tasks')"><div class="label">Tasks completed</div><div class="val">${done}/${t.length}</div><div class="sub">activities closed</div></div>
+    <div class="kpi clickable" onclick="goDoc('submittal')"><div class="label">Open submittals</div><div class="val">${openSub}</div><div class="sub">awaiting approval</div></div>
+    <div class="kpi clickable" onclick="goDoc('drawing')"><div class="label">Open drawings</div><div class="val">${openDwg}</div><div class="sub">awaiting approval</div></div>
+    <div class="kpi clickable" onclick="goDoc('wir')"><div class="label">Open WIR / MIR</div><div class="val">${openWIR}</div><div class="sub">pending inspection</div></div>
+    <div class="kpi clickable" onclick="goStore('inventory')"><div class="label">⚠ Low stock</div><div class="val" style="color:${lowStock?'var(--amber)':'var(--green)'}">${lowStock}</div><div class="sub">items need reorder</div></div>
+    <div class="kpi clickable" onclick="goStore('srequest')"><div class="label">🚚 Pending deliveries</div><div class="val" style="color:${pendDel?'var(--blue)':'var(--green)'}">${pendDel}</div><div class="sub">material lines remaining</div></div>
+    <div class="kpi clickable" onclick="goMain('attendance')"><div class="label">🕒 Present today</div><div class="val" style="color:var(--green)">${todayAttendance}</div><div class="sub">attendance marked present</div></div>`;
 }
 
 /* ── TAB SWITCHES ── */
@@ -744,6 +745,10 @@ function switchStoreSub(id,btn){
   document.getElementById('store-'+id).classList.add('active');
   btn.classList.add('active');
 }
+/* Clickable KPI cards → jump to the matching tab */
+function goMain(id){const b=document.querySelector('.main-tab[data-main="'+id+'"]');if(b)switchMain(id,b);window.scrollTo({top:0,behavior:'smooth'});}
+function goDoc(sub){goMain('documents');const b=document.querySelector('#main-documents .sub-tab[data-sub="'+sub+'"]');if(b)switchSub(sub,b);}
+function goStore(sub){goMain('store');const b=document.querySelector('#main-store .sub-tab[data-sub="'+sub+'"]');if(b)switchStoreSub(sub,b);}
 
 /* ── RENDER TASKS ── */
 const openTasks=new Set();
