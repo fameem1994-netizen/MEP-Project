@@ -6,9 +6,9 @@
 <title>MEP Project Follow-Up & Monitoring</title>
 <style>
   :root{
-    --bg:#0f172a;--panel:#1e293b;--panel2:#273449;--line:#334155;
-    --text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--accent2:#0ea5e9;
-    --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--grey:#64748b;--blue:#3b82f6;
+    --bg:#eef2f7;--panel:#ffffff;--panel2:#f1f5f9;--line:#d9e1ec;
+    --text:#1e293b;--muted:#64748b;--accent:#2563eb;--accent2:#1d4ed8;
+    --green:#16a34a;--amber:#d97706;--red:#dc2626;--grey:#94a3b8;--blue:#2563eb;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
@@ -112,32 +112,49 @@
   @media(max-width:600px){.form-grid{grid-template-columns:1fr}}
   @media print{header .toolbar,.main-tabs,.sub-tabs,.filters,.row-actions,.modal-bg,.banner{display:none!important}body{background:#fff;color:#000}}
 
-  /* ── Visual polish ── */
-  body{background:radial-gradient(1100px 600px at 85% -15%, #15263f 0%, var(--bg) 55%) fixed}
-  header{background:linear-gradient(135deg,#0c4a6e 0%,#0e7490 60%,#0891b2 100%);border-bottom:1px solid rgba(56,189,248,.25)}
-  header h1{font-size:1.3rem;letter-spacing:.2px}
+  /* ── Light corporate theme ── */
+  body{background:#eef2f7}
+  header{background:linear-gradient(135deg,#1e40af 0%,#2563eb 55%,#3b82f6 100%);border-bottom:1px solid rgba(37,99,235,.3);box-shadow:0 2px 10px rgba(2,32,71,.18)}
+  header h1{font-size:1.3rem;letter-spacing:.2px;color:#fff}
+  header .toolbar .btn-ghost{background:rgba(255,255,255,.18);color:#fff}
+  header .toolbar .btn-ghost:hover{background:rgba(255,255,255,.32)}
+  #liveStatus{color:#dbeafe}
   .wrap{padding-top:24px}
-  .kpi{background:linear-gradient(180deg,#1e293b,#1a2334);border-radius:14px;position:relative;overflow:hidden;transition:transform .15s ease, box-shadow .15s ease}
-  .kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),#22d3ee)}
-  .kpi:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.35)}
-  .kpi .label{font-weight:600}
-  .kpi .val{font-size:1.95rem}
-  .progress-fill{box-shadow:0 0 8px rgba(34,197,94,.5)}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06);transition:transform .15s ease, box-shadow .15s ease}
+  .kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),#60a5fa)}
+  .kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.12)}
+  .kpi .label{font-weight:600;color:var(--muted)}
+  .kpi .val{font-size:1.95rem;color:#0f172a}
+  .progress-track{background:#e2e8f0}
   .main-tab{font-weight:600}
   .sub-tab.active{font-weight:600}
-  .table-wrap{box-shadow:0 4px 16px rgba(0,0,0,.22)}
-  th{background:linear-gradient(180deg,#2b3a52,#243044);letter-spacing:.5px}
-  tbody tr:nth-child(even) td{background:rgba(255,255,255,.018)}
-  tbody tr:hover td{background:rgba(56,189,248,.06)}
-  .badge{box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+  .table-wrap{box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  th{background:#f1f5f9;letter-spacing:.5px;color:#475569}
+  tbody tr:nth-child(even) td{background:#f8fafc}
+  tbody tr:hover td{background:#eff6ff}
+  .modal{box-shadow:0 24px 60px rgba(15,23,42,.3)}
+  .info-note{border-radius:8px;background:#f0f7ff}
   button{transition:background .15s ease, box-shadow .15s ease, transform .08s ease}
   button:active{transform:scale(.97)}
-  .btn-primary{box-shadow:0 2px 8px rgba(56,189,248,.25)}
-  .btn-primary:hover{box-shadow:0 4px 14px rgba(56,189,248,.4)}
-  .modal{box-shadow:0 24px 60px rgba(0,0,0,.55)}
-  .info-note{border-radius:8px}
+  .btn-primary{box-shadow:0 2px 8px rgba(37,99,235,.25)}
+  .btn-ghost{background:#eef2f7;color:#334155}
+  .btn-ghost:hover{background:#e2e8f0}
+  /* badges tuned for light background */
+  .b-green{background:#dcfce7;color:#15803d}
+  .b-amber{background:#fef3c7;color:#b45309}
+  .b-red{background:#fee2e2;color:#b91c1c}
+  .b-grey{background:#e5e9f0;color:#475569}
+  .b-blue{background:#dbeafe;color:#1d4ed8}
+  .b-purple{background:#ede9fe;color:#6d28d9}
+  .b-teal{background:#ccfbf1;color:#0f766e}
+  /* connection banner for light background */
+  .banner.ok{background:#dcfce7;color:#166534;border-bottom:1px solid #86efac}
+  .banner.warn{background:#fef9c3;color:#854d0e;border-bottom:1px solid #fde047}
+  .banner.err{background:#fee2e2;color:#991b1b;border-bottom:1px solid #fca5a5}
+  /* task daily-progress panel */
+  .task-detail>td{background:#f8fafc!important}
   ::-webkit-scrollbar{height:10px;width:10px}
-  ::-webkit-scrollbar-thumb{background:#33455f;border-radius:6px}
+  ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
   ::-webkit-scrollbar-track{background:transparent}
 </style>
 </head>
