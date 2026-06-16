@@ -9,9 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#eef2f7;--panel:#ffffff;--panel2:#eef2f7;--line:#cbd5e1;
-    --text:#1e293b;--muted:#566175;--accent:#3b6fa8;--accent2:#2f5d90;
-    --green:#16a34a;--amber:#d97706;--red:#dc2626;--grey:#94a3b8;--blue:#2563eb;
+    --bg:#0e1726;--panel:#172132;--panel2:#1f2b3e;--line:#2c3a50;
+    --text:#e6ecf5;--muted:#94a3b8;--accent:#4b8bd0;--accent2:#3b6fa8;
+    --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--grey:#64748b;--blue:#60a5fa;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
@@ -115,56 +115,57 @@
   @media(max-width:600px){.form-grid{grid-template-columns:1fr}}
   @media print{header .toolbar,.main-tabs,.sub-tabs,.filters,.row-actions,.modal-bg,.banner{display:none!important}body{background:#fff;color:#000}}
 
-  /* ── Light corporate theme ── */
+  /* ── Dark theme ── */
   *{font-family:'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif}
-  body{background:#eef2f7;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;color:#0f172a}
-  td{color:#1e293b}
-  th{font-weight:700;color:#475569}
-  strong{color:#0f172a}
+  body{background:radial-gradient(1100px 600px at 85% -15%, #13243c 0%, var(--bg) 55%) fixed;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;color:var(--text)}
+  td{color:#dbe3ef}
+  th{font-weight:700;color:#9fb0c6}
+  strong{color:#f1f5fb}
   .badge{font-weight:600}
-  tbody td{border-bottom-color:#e2e8f0}
-  header{background:linear-gradient(135deg,#34557e 0%,#3f6fa5 100%);border-bottom:1px solid rgba(52,85,126,.4);box-shadow:0 2px 10px rgba(15,23,42,.15)}
+  tbody td{border-bottom-color:#243248}
+  header{background:linear-gradient(135deg,#13314f 0%,#1c4b78 100%);border-bottom:1px solid rgba(75,139,208,.35);box-shadow:0 2px 12px rgba(0,0,0,.45)}
   header h1{font-size:1.3rem;letter-spacing:.2px;color:#fff}
-  header .toolbar .btn-ghost{background:rgba(255,255,255,.18);color:#fff}
-  header .toolbar .btn-ghost:hover{background:rgba(255,255,255,.32)}
-  #liveStatus{color:#dbeafe}
+  header .toolbar .btn-ghost{background:rgba(255,255,255,.14);color:#fff}
+  header .toolbar .btn-ghost:hover{background:rgba(255,255,255,.26)}
+  #liveStatus{color:#bcd6f0}
   .wrap{padding-top:24px}
-  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06);transition:transform .15s ease, box-shadow .15s ease}
+  .kpi{background:linear-gradient(180deg,#1b2738,#172030);border:1px solid var(--line);border-radius:14px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:transform .15s ease, box-shadow .15s ease}
   .kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),#60a5fa)}
-  .kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(15,23,42,.12)}
+  .kpi:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.45)}
   .kpi .label{font-weight:600;color:var(--muted)}
-  .kpi .val{font-size:1.95rem;color:#0f172a}
+  .kpi .val{font-size:1.95rem;color:#f1f5fb}
   .kpi.clickable{cursor:pointer}
-  .progress-track{background:#e2e8f0}
+  .progress-track{background:#26344a}
+  .progress-fill{box-shadow:0 0 8px rgba(34,197,94,.45)}
   .main-tab{font-weight:600}
   .sub-tab.active{font-weight:600}
-  .table-wrap{box-shadow:0 2px 10px rgba(15,23,42,.06)}
-  th{background:#f1f5f9;letter-spacing:.5px;color:#475569}
-  tbody tr:nth-child(even) td{background:#f8fafc}
-  tbody tr:hover td{background:#eff6ff}
-  .modal{box-shadow:0 24px 60px rgba(15,23,42,.3)}
-  .info-note{border-radius:8px;background:#f0f7ff}
+  .table-wrap{box-shadow:0 4px 16px rgba(0,0,0,.3)}
+  th{background:#202d40;letter-spacing:.5px;color:#9fb0c6}
+  tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  tbody tr:hover td{background:rgba(75,139,208,.10)}
+  .modal{box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .info-note{border-radius:8px;background:#16263c}
   button{transition:background .15s ease, box-shadow .15s ease, transform .08s ease}
   button:active{transform:scale(.97)}
-  .btn-primary{box-shadow:0 2px 8px rgba(37,99,235,.25)}
-  .btn-ghost{background:#eef2f7;color:#334155}
-  .btn-ghost:hover{background:#e2e8f0}
-  /* badges tuned for light background */
-  .b-green{background:#dcfce7;color:#15803d}
-  .b-amber{background:#fef3c7;color:#b45309}
-  .b-red{background:#fee2e2;color:#b91c1c}
-  .b-grey{background:#e5e9f0;color:#475569}
-  .b-blue{background:#dbeafe;color:#1d4ed8}
-  .b-purple{background:#ede9fe;color:#6d28d9}
-  .b-teal{background:#ccfbf1;color:#0f766e}
-  /* connection banner for light background */
-  .banner.ok{background:#dcfce7;color:#166534;border-bottom:1px solid #86efac}
-  .banner.warn{background:#fef9c3;color:#854d0e;border-bottom:1px solid #fde047}
-  .banner.err{background:#fee2e2;color:#991b1b;border-bottom:1px solid #fca5a5}
+  .btn-primary{box-shadow:0 2px 8px rgba(75,139,208,.3)}
+  .btn-ghost{background:rgba(255,255,255,.10);color:#dbe3ef}
+  .btn-ghost:hover{background:rgba(255,255,255,.18)}
+  /* badges for dark background */
+  .b-green{background:rgba(34,197,94,.18);color:#4ade80}
+  .b-amber{background:rgba(245,158,11,.18);color:#fbbf24}
+  .b-red{background:rgba(239,68,68,.18);color:#f87171}
+  .b-grey{background:rgba(100,116,139,.25);color:#cbd5e1}
+  .b-blue{background:rgba(96,165,250,.18);color:#93c5fd}
+  .b-purple{background:rgba(139,92,246,.18);color:#c4b5fd}
+  .b-teal{background:rgba(20,184,166,.18);color:#5eead4}
+  /* connection banner for dark background */
+  .banner.ok{background:#0f3a2e;color:#86efac;border-bottom:1px solid #166534}
+  .banner.warn{background:#3a2c0a;color:#fcd34d;border-bottom:1px solid #92670e}
+  .banner.err{background:#3a1212;color:#fca5a5;border-bottom:1px solid #991b1b}
   /* task daily-progress panel */
-  .task-detail>td{background:#f8fafc!important}
+  .task-detail>td{background:rgba(255,255,255,.03)!important}
   ::-webkit-scrollbar{height:10px;width:10px}
-  ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
+  ::-webkit-scrollbar-thumb{background:#33455f;border-radius:6px}
   ::-webkit-scrollbar-track{background:transparent}
 </style>
 </head>
