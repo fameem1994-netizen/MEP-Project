@@ -113,6 +113,16 @@
 
   footer{text-align:center;color:var(--grey);font-size:.73rem;padding:24px}
   @media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+  @media(max-width:640px){
+    header{padding:12px 14px}
+    header h1{font-size:1.05rem}
+    .wrap{padding:14px}
+    .main-tab{padding:9px 12px;font-size:.8rem}
+    .sub-tab{padding:7px 10px;font-size:.78rem}
+    .kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+    .kpi .val{font-size:1.5rem}
+    .modal{padding:16px}
+  }
   @media print{header .toolbar,.main-tabs,.sub-tabs,.filters,.row-actions,.modal-bg,.banner{display:none!important}body{background:#fff;color:#000}}
 
   /* ── Dark theme ── */
@@ -172,7 +182,7 @@
 <body>
 <div class="banner" id="banner"></div>
 <header>
-  <h1>🏗️ MEP Project Follow-Up</h1>
+  <h1><img id="appLogo" alt="" style="height:30px;border-radius:6px;margin-right:8px;display:none;vertical-align:middle"><span id="appTitle">🏗️ MEP Project Follow-Up</span></h1>
   <div class="toolbar">
     <span id="liveStatus" style="font-size:.76rem;color:#bae6fd"></span>
     <button class="btn-ghost btn-sm" onclick="exportExcel()">⬇ Export</button>
@@ -424,6 +434,10 @@ const AW_ENDPOINT   = "https://nyc.cloud.appwrite.io/v1";   // API Endpoint
 const AW_PROJECT    = "6a29c9f400074b7c86f8";   // Project ID
 const AW_DATABASE   = "6a29cb49002061097726";   // Database ID
 const AW_COLLECTION = "mepdatabase";   // Collection (Table) ID
+
+/* ── Branding ── */
+const PROJECT_NAME = "MEP Project Follow-Up";
+const LOGO_URL = "";  // paste a logo image URL here to show your logo in the header
 const USING_AW = !!(AW_PROJECT && AW_DATABASE && AW_COLLECTION);
 let aw=null, awDB=null;
 if(USING_AW){
@@ -470,6 +484,7 @@ const FORMS = {
       {k:"submitted",l:"Submitted date",t:"date"},
       {k:"due",l:"Response due",t:"date"},
       {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Under Review","Approved","Approved w/ Comments","Rejected"]},
+      {k:"link",l:"📎 File / drawing link (URL)",t:"text",full:true},
       {k:"notes",l:"Remarks",t:"textarea",full:true}
     ]
   },
@@ -485,6 +500,7 @@ const FORMS = {
       {k:"issuedBy",l:"Issued by",t:"text"},
       {k:"issuedDate",l:"Issued date",t:"date"},
       {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Under Review","Approved","Approved w/ Comments","For Construction","Superseded","Rejected"]},
+      {k:"link",l:"📎 File / drawing link (URL)",t:"text",full:true},
       {k:"notes",l:"Notes",t:"textarea",full:true}
     ]
   },
@@ -497,6 +513,7 @@ const FORMS = {
       {k:"location",l:"Location / area",t:"text",full:true},
       {k:"drawingRef",l:"Drawing reference",t:"text"},
       {k:"contractor",l:"Contractor",t:"text"},
+      {k:"link",l:"📎 File link (URL)",t:"text",full:true},
       {k:"inspector",l:"Inspector",t:"text"},
       {k:"inspectionDate",l:"Inspection date",t:"date"},
       {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Pending","Accepted","Conditional","Not Accepted","Closed"]},
@@ -512,6 +529,7 @@ const FORMS = {
       {k:"supplier",l:"Supplier",t:"text"},
       {k:"qty",l:"Quantity",t:"text"},
       {k:"deliveryNote",l:"Delivery note no.",t:"text"},
+      {k:"link",l:"📎 File link (URL)",t:"text",full:true},
       {k:"inspector",l:"Inspector",t:"text"},
       {k:"inspectionDate",l:"Inspection date",t:"date"},
       {k:"status",l:"Status",t:"select",opts:["Draft","Submitted","Pending","Accepted","Conditional","Not Accepted","Closed"]},
@@ -766,11 +784,12 @@ function taskProgressHtml(taskId){
   const rows=(DB.progress||[]).filter(p=>String(p.taskId)===String(taskId))
     .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   if(!rows.length) return '<div style="color:var(--muted);font-size:.8rem;padding:4px 0">No daily updates yet.</div>';
-  return '<table style="min-width:auto;margin-top:4px"><thead><tr><th>Date</th><th>Daily %</th><th>Work done / notes</th><th></th></tr></thead><tbody>'+
+  return '<table style="min-width:auto;margin-top:4px"><thead><tr><th>Date</th><th>Daily %</th><th>Work done / notes</th><th>Photo/file</th><th></th></tr></thead><tbody>'+
     rows.map(p=>`<tr>
       <td style="font-size:.8rem">${p.date||'–'}</td>
       <td style="font-size:.8rem">${(p.progress!==''&&p.progress!=null)?p.progress+'%':'–'}</td>
       <td style="font-size:.8rem">${p.notes||'–'}</td>
+      <td style="font-size:.8rem">${p.link?`<a href="${p.link}" target="_blank" rel="noopener" title="Open">📎 Open</a>`:'–'}</td>
       <td><button class="btn-danger btn-sm" onclick="delProgress('${p.id}')">✕</button></td>
     </tr>`).join('')+'</tbody></table>';
 }
@@ -799,7 +818,9 @@ async function addProgress(taskId){
   const note=nEl?nEl.value.trim():'';
   if(pct===''&&note===''){alert('Enter % complete and/or a note.');return;}
   openTasks.add(String(taskId));
-  const entry={taskId:String(taskId),date,progress:pct,notes:note};
+  const lEl=document.getElementById('plink-'+taskId);
+  const link=lEl?lEl.value.trim():'';
+  const entry={taskId:String(taskId),date,progress:pct,notes:note,link};
   const task=DB.task.find(t=>String(t.id)===String(taskId));
   let taskUpd=null;
   if(task&&pct!==''){
@@ -854,7 +875,8 @@ function renderTasks(){
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
           <input type="date" id="pdate-${it.id}" value="${today()}">
           <input type="number" id="ppct-${it.id}" placeholder="% done this day" min="0" max="100" style="width:130px">
-          <input type="text" id="pnote-${it.id}" placeholder="Work done / notes" style="flex:1;min-width:180px">
+          <input type="text" id="pnote-${it.id}" placeholder="Work done / notes" style="flex:1;min-width:160px">
+          <input type="text" id="plink-${it.id}" placeholder="📎 Photo/file link (URL)" style="flex:1;min-width:150px">
           <button class="btn-primary btn-sm" onclick="addProgress('${it.id}')">+ Add update</button>
         </div>
       </div>
@@ -882,6 +904,7 @@ function renderDoc(kind){
   const b=document.getElementById(kind+'-body');
   if(!rows.length){b.innerHTML=`<tr><td colspan="${DOC_SPAN[kind]+1}" class="empty">No entries yet.</td></tr>`;return;}
   b.innerHTML=rows.map(it=>`<tr>${DOC_COLS[kind](it)}<td><div class="row-actions">
+    ${it.link?`<a class="btn-ghost btn-sm" href="${it.link}" target="_blank" rel="noopener" title="Open file" style="text-decoration:none">📎</a>`:''}
     <button class="btn-ghost btn-sm" onclick="openModal('${kind}','${it.id}')">Edit</button>
     <button class="btn-danger btn-sm" onclick="del('${kind}','${it.id}')">✕</button>
   </div></td></tr>`).join('');
@@ -1504,6 +1527,13 @@ function printCurrentReport(){
 if(USING_AW){
   try{ aw.subscribe('databases.'+AW_DATABASE+'.collections.'+AW_COLLECTION+'.documents',()=>{ if(!document.getElementById('modalBg').classList.contains('open')) loadAll(); }); }catch(e){}
 }
+
+/* ── Apply branding ── */
+(function(){
+  const t=document.getElementById('appTitle'); if(t)t.textContent=(LOGO_URL?'':'🏗️ ')+PROJECT_NAME;
+  const l=document.getElementById('appLogo'); if(l&&LOGO_URL){l.src=LOGO_URL;l.style.display='inline-block';}
+  document.title=PROJECT_NAME;
+})();
 
 loadAll();
 </script>
