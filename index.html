@@ -1025,7 +1025,7 @@ function renderAll(){
 }
 
 /* ── MODAL ── */
-let editKindForSave=null, usedMulti=false;
+let editKindForSave=null, usedMulti=false, attMulti=false;
 
 function latestEmployeeDetailsByNo(empNo){
   empNo=String(empNo||'').trim().toLowerCase();
@@ -1056,6 +1056,7 @@ function openModal(kind,id){
   editId=(id===undefined||id===null||id==='')?null:id;
   usedMulti=false;
   if(kind==='used' && !editId){ openUsedModal(); return; }  // multi-material entry for new usage
+  if(kind==='attendance' && !editId){ openAttendanceModal(); return; }  // multi-person attendance
   const form=FORMS[kind];
   const item=editId?DB[kind].find(x=>String(x.id)===String(editId)):{};
 
@@ -1081,7 +1082,59 @@ function openModal(kind,id){
   }).join('');
   document.getElementById('modalBg').classList.add('open');
 }
-function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;editKindForSave=null;usedMulti=false;}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');editId=null;editKindForSave=null;usedMulti=false;attMulti=false;const m=document.querySelector('.modal');if(m)m.style.maxWidth='';}
+
+/* ── Attendance: mark several people in one entry ── */
+function addAttRow(){
+  const div=document.createElement('div');
+  div.className='att-row';
+  div.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:6px';
+  div.innerHTML=`
+    <input class="a-emp" placeholder="Emp no." style="width:90px">
+    <input class="a-name" placeholder="Name *" style="flex:1;min-width:130px">
+    <input class="a-trade" placeholder="Trade" style="width:110px">
+    <input class="a-loc" placeholder="Location" style="width:120px">
+    <input class="a-in" type="time" style="width:120px">
+    <input class="a-out" type="time" style="width:120px">
+    <select class="a-status" style="width:110px"><option>Present</option><option>Absent</option><option>Late</option><option>Half Day</option><option>Leave</option></select>
+    <input class="a-rem" placeholder="Remarks" style="flex:1;min-width:120px">
+    <button type="button" class="btn-danger btn-sm" onclick="this.closest('.att-row').remove()">✕</button>`;
+  document.getElementById('attRows').appendChild(div);
+}
+function openAttendanceModal(){
+  editKindForSave='attendance';editId=null;attMulti=true;
+  const m=document.querySelector('.modal');if(m)m.style.maxWidth='860px';
+  document.getElementById('modalTitle').textContent='New Attendance';
+  document.getElementById('formFields').innerHTML=`
+    <div class="field"><label>Date *</label><input id="f_date" type="date" value="${today()}"></div>
+    <div class="field full"><label>People</label>
+      <div id="attRows"></div>
+      <button type="button" class="btn-ghost btn-sm" style="margin-top:6px" onclick="addAttRow()">+ Add person</button>
+    </div>`;
+  addAttRow();addAttRow();
+  document.getElementById('modalBg').classList.add('open');
+}
+async function saveAttMulti(){
+  const date=document.getElementById('f_date').value.trim();
+  if(!date){alert('Please enter the Date.');return;}
+  const calcHours=(tin,tout)=>{if(!tin||!tout)return'';const[ih,im]=tin.split(':').map(Number);const[oh,om]=tout.split(':').map(Number);let mins=(oh*60+om)-(ih*60+im);if(mins<0)mins+=1440;return (mins/60).toFixed(2).replace(/\.00$/,'');};
+  const entries=[];
+  document.querySelectorAll('#attRows .att-row').forEach(r=>{
+    const name=r.querySelector('.a-name').value.trim();
+    if(!name)return;
+    const timeIn=r.querySelector('.a-in').value,timeOut=r.querySelector('.a-out').value;
+    entries.push({date,empNo:r.querySelector('.a-emp').value.trim(),name,trade:r.querySelector('.a-trade').value.trim(),workLocation:r.querySelector('.a-loc').value.trim(),timeIn,timeOut,hours:calcHours(timeIn,timeOut),status:r.querySelector('.a-status').value,remarks:r.querySelector('.a-rem').value.trim()});
+  });
+  if(!entries.length){alert('Add at least one person with a name.');return;}
+  const btn=document.getElementById('saveBtn');btn.textContent='Saving…';btn.disabled=true;
+  closeModal();
+  if(USING_AW){
+    try{ for(const e of entries){ await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'attendance',data:JSON.stringify(e)}); } }
+    catch(err){alert('Save failed: '+(err.message||err));btn.textContent='Save';btn.disabled=false;return;}
+    await loadAll();
+  }else{ entries.forEach(e=>{e.id=nextId.attendance++;DB.attendance.push(e);}); save();renderAll(); }
+  btn.textContent='Save';btn.disabled=false;
+}
 
 /* ── Material Used: log several materials in one entry ── */
 function usedMaterialOptions(){
@@ -1151,6 +1204,7 @@ async function ensureInventoryItem(materialName){
 
 async function saveItem(){
   if(usedMulti && editKindForSave==='used'){ await saveUsedMulti(); return; }
+  if(attMulti && editKindForSave==='attendance'){ await saveAttMulti(); return; }
   const kind=editKindForSave;
   const form=FORMS[kind];
   const obj={};
