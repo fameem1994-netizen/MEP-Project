@@ -706,7 +706,7 @@ function taskProgressHtml(taskId){
   const rows=(DB.progress||[]).filter(p=>String(p.taskId)===String(taskId))
     .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   if(!rows.length) return '<div style="color:var(--muted);font-size:.8rem;padding:4px 0">No daily updates yet.</div>';
-  return '<table style="min-width:auto;margin-top:4px"><thead><tr><th>Date</th><th>% Complete</th><th>Work done / notes</th><th></th></tr></thead><tbody>'+
+  return '<table style="min-width:auto;margin-top:4px"><thead><tr><th>Date</th><th>Daily %</th><th>Work done / notes</th><th></th></tr></thead><tbody>'+
     rows.map(p=>`<tr>
       <td style="font-size:.8rem">${p.date||'–'}</td>
       <td style="font-size:.8rem">${(p.progress!==''&&p.progress!=null)?p.progress+'%':'–'}</td>
@@ -718,8 +718,8 @@ function taskProgressHtml(taskId){
 function taskProgressValue(task){
   const rows=(DB.progress||[]).filter(p=>String(p.taskId)===String(task.id)&&p.progress!==''&&p.progress!=null);
   if(rows.length){
-    rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-    return Number(rows[0].progress)||0;
+    const sum=rows.reduce((a,p)=>a+(Number(p.progress)||0),0);
+    return Math.min(100,sum);
   }
   return Number(task.progress)||0;
 }
@@ -742,8 +742,11 @@ async function addProgress(taskId){
   const entry={taskId:String(taskId),date,progress:pct,notes:note};
   const task=DB.task.find(t=>String(t.id)===String(taskId));
   let taskUpd=null;
-  if(task&&pct!==''){taskUpd={...task};delete taskUpd.id;taskUpd.progress=pct;
-    if(Number(pct)>=100)taskUpd.status='Completed';else if(taskUpd.status==='Not Started')taskUpd.status='In Progress';}
+  if(task&&pct!==''){
+    const prevSum=(DB.progress||[]).filter(p=>String(p.taskId)===String(taskId)&&p.progress!==''&&p.progress!=null).reduce((a,p)=>a+(Number(p.progress)||0),0);
+    const total=Math.min(100,prevSum+(Number(pct)||0));
+    taskUpd={...task};delete taskUpd.id;taskUpd.progress=total;
+    if(total>=100)taskUpd.status='Completed';else if(taskUpd.status==='Not Started')taskUpd.status='In Progress';}
   if(USING_AW){
     try{
       await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'progress',data:JSON.stringify(entry)});
@@ -790,7 +793,7 @@ function renderTasks(){
         ${taskProgressHtml(it.id)}
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">
           <input type="date" id="pdate-${it.id}" value="${today()}">
-          <input type="number" id="ppct-${it.id}" placeholder="% complete" min="0" max="100" style="width:120px">
+          <input type="number" id="ppct-${it.id}" placeholder="% done this day" min="0" max="100" style="width:130px">
           <input type="text" id="pnote-${it.id}" placeholder="Work done / notes" style="flex:1;min-width:180px">
           <button class="btn-primary btn-sm" onclick="addProgress('${it.id}')">+ Add update</button>
         </div>
