@@ -654,7 +654,7 @@ function banner(type,html){const b=document.getElementById('banner');b.className
 function renderKpis(){
   const t=DB.task;
   const done=t.filter(x=>x.status==="Completed").length;
-  const avg=t.length?Math.round(t.reduce((a,x)=>a+(+x.progress||0),0)/t.length):0;
+  const avg=t.length?Math.round(t.reduce((a,x)=>a+(taskProgressValue(x)||0),0)/t.length):0;
   const lowStock=DB.inventory.filter(x=>Number(x.qtyOnHand)<=Number(x.minStock)).length;
   // Count material request lines that still have quantity remaining to deliver.
   // This is better than only counting delivery records with status "Pending",
@@ -714,6 +714,15 @@ function taskProgressHtml(taskId){
       <td><button class="btn-danger btn-sm" onclick="delProgress('${p.id}')">✕</button></td>
     </tr>`).join('')+'</tbody></table>';
 }
+// Task % done = the most recent daily update's % (falls back to stored value if no updates)
+function taskProgressValue(task){
+  const rows=(DB.progress||[]).filter(p=>String(p.taskId)===String(task.id)&&p.progress!==''&&p.progress!=null);
+  if(rows.length){
+    rows.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    return Number(rows[0].progress)||0;
+  }
+  return Number(task.progress)||0;
+}
 function toggleTaskDetail(id,el){
   id=String(id);
   const row=document.getElementById('detail-'+id);
@@ -766,7 +775,7 @@ function renderTasks(){
     <td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td>
     <td>${it.owner||'–'}</td>
     <td><span class="prio-dot" style="background:${PRIO_C[it.priority]||'var(--grey)'}"></span>${it.priority||'–'}</td>
-    <td>${it.progress||0}%</td>
+    <td>${taskProgressValue(it)}%</td>
     <td>${dateCell(it.due,it.status)}</td>
     <td>${badge(it.status)}</td>
     <td><div class="row-actions">
