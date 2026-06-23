@@ -281,7 +281,7 @@
         <button class="btn-primary" onclick="openModal('drawing')">+ Add</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Drawing no.</th><th>Title</th><th>Discipline</th><th>Type</th><th>Rev</th><th>Scale</th><th>Issued</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Drawing no.</th><th>Project</th><th>Title</th><th>Discipline</th><th>Type</th><th>Rev</th><th>Scale</th><th>Issued</th><th>Status</th><th></th></tr></thead>
         <tbody id="drawing-body"></tbody>
       </table></div>
     </div>
@@ -492,6 +492,7 @@ const FORMS = {
     title:"Drawing",
     fields:[
       {k:"drawingNo",l:"Drawing no.",t:"text",req:true},
+      {k:"projectName",l:"Project name",t:"text",full:true},
       {k:"title",l:"Drawing title",t:"text",req:true,full:true},
       {k:"discipline",l:"Discipline",t:"select",opts:DISC},
       {k:"drawingType",l:"Drawing type",t:"select",opts:["Layout Plan","Elevation","Section","Detail","Schematic","Single Line","Riser","Isometric","General Arrangement","Other"]},
@@ -887,11 +888,11 @@ function renderTasks(){
 /* ── RENDER DOCS ── */
 const DOC_COLS={
   submittal:(it)=>`<td>${it.ref}</td><td>${it.title}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.type||'–'}</td><td>${it.rev||'–'}</td><td>${dateCell(it.due,it.status)}</td><td>${badge(it.status)}</td>`,
-  drawing:(it)=>`<td>${it.drawingNo}</td><td>${it.title}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.drawingType||'–'}</td><td>${it.rev||'–'}</td><td>${it.scale||'–'}</td><td>${it.issuedDate||'–'}</td><td>${badge(it.status)}</td>`,
+  drawing:(it)=>`<td>${it.drawingNo}</td><td>${it.projectName||'–'}</td><td>${it.title}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.drawingType||'–'}</td><td>${it.rev||'–'}</td><td>${it.scale||'–'}</td><td>${it.issuedDate||'–'}</td><td>${badge(it.status)}</td>`,
   wir:(it)=>`<td>${it.wirNo}</td><td>${it.activity}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.location||'–'}</td><td>${dateCell(it.inspectionDate,it.status)}</td><td>${it.inspector||'–'}</td><td>${badge(it.status)}</td>`,
   mir:(it)=>`<td>${it.mirNo}</td><td>${it.material}</td><td><span style="color:var(--muted);font-size:.8rem">${it.discipline||'–'}</span></td><td>${it.supplier||'–'}</td><td>${dateCell(it.inspectionDate,it.status)}</td><td>${it.qty||'–'}</td><td>${badge(it.status)}</td>`
 };
-const DOC_SPAN={submittal:7,drawing:8,wir:7,mir:7};
+const DOC_SPAN={submittal:7,drawing:9,wir:7,mir:7};
 const DOC_TITLE_FIELD={submittal:'title',drawing:'title',wir:'activity',mir:'material'};
 function renderDoc(kind){
   const fs=document.getElementById(kind+'-status').value;
@@ -1489,7 +1490,7 @@ function activeReportConfig(){
   const configs={
     task:{title:'Tasks',headers:['Task / Activity','Discipline','Responsible','Priority','% Done','Due','Status'],rows:DB.task.map(it=>[it.title,it.discipline,it.owner,it.priority,(it.progress||0)+'%',it.due,it.status])},
     submittal:{title:'Submittals',headers:['Ref no.','Title','Type','Due','Status'],rows:DB.submittal.map(it=>[it.ref,it.title,it.type,it.due,it.status])},
-    drawing:{title:'Drawings',headers:['Drawing no.','Title','Type','Issued','Status'],rows:DB.drawing.map(it=>[it.drawingNo,it.title,it.drawingType,it.issuedDate,it.status])},
+    drawing:{title:'Drawings',headers:['Drawing no.','Project','Title','Type','Issued','Status'],rows:DB.drawing.map(it=>[it.drawingNo,it.projectName,it.title,it.drawingType,it.issuedDate,it.status])},
     wir:{title:'WIR',headers:['WIR no.','Activity','Location','Inspection date','Status'],rows:DB.wir.map(it=>[it.wirNo,it.activity,it.location,it.inspectionDate,it.status])},
     mir:{title:'MIR',headers:['MIR no.','Material','Supplier','Inspection date','Qty','Status'],rows:DB.mir.map(it=>[it.mirNo,it.material,it.supplier,it.inspectionDate,it.qty,it.status])},
     inventory:{title:'Inventory',headers:['Material','Date','Category','On hand','Min stock','Remaining to deliver','Location','Status'],rows:DB.inventory.map(it=>{const r=remainingToDeliverForMaterial(it.material);return[it.material,it.date,it.category,`${onHandForMaterial(it.material)} ${it.unit||''}`,`${it.minStock||0} ${it.unit||''}`,`${r} ${it.unit||''}`,it.location,autoStockStatus(onHandForMaterial(it.material),it.minStock)];})},
