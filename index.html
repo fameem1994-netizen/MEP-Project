@@ -428,6 +428,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.0"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script>
 /* ── APPWRITE BACKEND ──  (see SETUP-appwrite.md for how to fill these in) */
 const AW_ENDPOINT   = "https://nyc.cloud.appwrite.io/v1";   // API Endpoint
@@ -1321,6 +1322,38 @@ function addDelRow(){
     <button type="button" class="btn-danger btn-sm" onclick="this.closest('.del-row').remove()" style="flex:none">✕</button>`;
   document.getElementById('delRows').appendChild(div);
 }
+async function scanDeliveryNote(e){
+  const file=e.target.files[0];e.target.value='';
+  if(!file)return;
+  const status=document.getElementById('delScanStatus');
+  if(typeof Tesseract==='undefined'){status.textContent='OCR not loaded — check internet and try again.';return;}
+  status.textContent='⏳ Scanning… (10–30s, please wait)';
+  try{
+    const {data}=await Tesseract.recognize(file,'eng');
+    const text=((data&&data.text)||'').trim();
+    const notesEl=document.getElementById('f_notes'); if(notesEl) notesEl.value=(notesEl.value?notesEl.value+'\n':'')+text;
+    // best-effort: delivery no & supplier
+    const dn=text.match(/(?:delivery\s*note|delivery|d\/?n|dn)\s*(?:no\.?|number|#|:)?\s*([A-Za-z0-9\/\-]{3,})/i);
+    const dnEl=document.getElementById('f_deliveryNo'); if(dn&&dnEl&&!dnEl.value) dnEl.value=dn[1];
+    const sup=text.match(/supplier\s*[:\-]?\s*([^\n]+)/i);
+    const supEl=document.getElementById('f_supplier'); if(sup&&supEl&&!supEl.value) supEl.value=sup[1].trim();
+    // best-effort: line items = "name .... qty"
+    const parsed=[];
+    text.split('\n').map(s=>s.trim()).filter(s=>s.length>2).forEach(line=>{
+      if(/^(delivery|invoice|date|supplier|qty|quantity|description|item|s\.?\s?no|sl|total|note|received|po\b)/i.test(line))return;
+      const m=line.match(/^(.+?)[\s:.\-]+(\d+(?:\.\d+)?)\s*(?:nos|pcs|no|ea|units?|mtr|m)?\.?$/i);
+      if(m && /[a-z]/i.test(m[1])) parsed.push({material:m[1].replace(/[.\-–:]+$/,'').trim(),qty:m[2]});
+    });
+    if(parsed.length){
+      document.getElementById('delRows').innerHTML='';
+      parsed.forEach(p=>{ addDelRow(); const rows=document.querySelectorAll('#delRows .del-row'); const r=rows[rows.length-1]; r.querySelector('.d-mat').value=p.material; r.querySelector('.d-qty').value=p.qty; });
+      addDelRow();
+      status.textContent='✓ Found '+parsed.length+' item(s). Please review/fix before saving.';
+    }else{
+      status.textContent='Couldn’t auto-detect items — scanned text added to Notes. Enter rows manually.';
+    }
+  }catch(err){ status.textContent='Scan failed: '+(err.message||err); }
+}
 function openDeliveryModal(){
   editKindForSave='delivery';editId=null;delMulti=true;
   const m=document.querySelector('.modal');if(m)m.style.maxWidth='860px';
@@ -1332,6 +1365,13 @@ function openDeliveryModal(){
     <div class="field"><label>Status</label><select id="f_status"><option>Pending</option><option>Received</option><option>Inspected</option><option>Stored</option><option>Rejected</option></select></div>
     <div class="field"><label>Expected date</label><input id="f_expectedDate" type="date"></div>
     <div class="field"><label>Received date</label><input id="f_receivedDate" type="date"></div>
+    <div class="field full"><label>📷 Scan delivery note (printed notes work best)</label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button type="button" class="btn-ghost btn-sm" onclick="document.getElementById('delScanInput').click()">📷 Scan note</button>
+        <input type="file" id="delScanInput" accept="image/*" capture="environment" style="display:none" onchange="scanDeliveryNote(event)">
+        <span id="delScanStatus" style="font-size:.8rem;color:var(--muted)"></span>
+      </div>
+    </div>
     <div class="field full"><label>Items in this delivery *</label>
       <div id="delRows"></div>
       <button type="button" class="btn-ghost btn-sm" style="margin-top:6px" onclick="addDelRow()">+ Add item</button>
