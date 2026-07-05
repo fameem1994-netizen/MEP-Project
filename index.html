@@ -948,6 +948,19 @@ function usedQtyForMaterial(materialName){
 function onHandForMaterial(materialName){
   return receivedQtyForMaterial(materialName)-usedQtyForMaterial(materialName);
 }
+// Identify a stock item by its part number when present, else by material name.
+// This consolidates the same physical item (same part no.) even if the name was typed differently.
+function stockKey(o){
+  let p=String((o&&o.partNo)||'').trim().toLowerCase();
+  if(!p) p=String(partNoForMaterial(o&&o.material)||'').trim().toLowerCase();
+  return p ? ('p:'+p) : ('m:'+String((o&&o.material)||'').trim().toLowerCase());
+}
+function onHandForItem(item){
+  const k=stockKey(item);
+  const recv=DB.delivery.filter(d=>RECEIVED_STATES.includes(d.status)&&stockKey(d)===k).reduce((s,d)=>s+Number(d.qtyReceived||0),0);
+  const used=DB.used.filter(u=>stockKey(u)===k).reduce((s,u)=>s+Number(u.qtyUsed||0),0);
+  return recv-used;
+}
 
 function partNoForMaterial(materialName){
   const m=String(materialName||'').trim().toLowerCase();
@@ -959,7 +972,7 @@ function renderInventory(){
   const b=document.getElementById('inventory-body');
   if(!DB.inventory.length){b.innerHTML='<tr><td colspan="10" class="empty">No items in store.</td></tr>';return;}
   b.innerHTML=DB.inventory.map(it=>{
-    const q=onHandForMaterial(it.material),m=Number(it.minStock);
+    const q=onHandForItem(it),m=Number(it.minStock);
     const remainingToDeliver = remainingToDeliverForMaterial(it.material);
     const pct=m>0?Math.min(100,Math.round(q/m*100)):100;
     const bc=q===0?'#ef4444':q<=m?'#f59e0b':'#22c55e';
@@ -1401,12 +1414,12 @@ async function saveDelMulti(){
     try{
       for(const e of entries){
         await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'delivery',data:JSON.stringify(e)});
-        if(RECEIVED_STATES.includes(e.status)) await ensureInventoryItem(e.material);
+        if(RECEIVED_STATES.includes(e.status)) await ensureInventoryItem(e.material,e.partNo);
       }
     }catch(err){alert('Save failed: '+(err.message||err));btn.textContent='Save';btn.disabled=false;return;}
     await loadAll();
   }else{
-    for(const e of entries){ e.id=nextId.delivery++; DB.delivery.push(e); if(RECEIVED_STATES.includes(e.status)) await ensureInventoryItem(e.material); }
+    for(const e of entries){ e.id=nextId.delivery++; DB.delivery.push(e); if(RECEIVED_STATES.includes(e.status)) await ensureInventoryItem(e.material,e.partNo); }
     save();renderAll();
   }
   btn.textContent='Save';btn.disabled=false;
@@ -1415,12 +1428,17 @@ async function saveDelMulti(){
 const RECEIVED_STATES=["Received","Inspected","Stored"];
 // On-hand is computed live (received − used), so we never mutate stored stock numbers.
 // We only make sure a delivered material has a row in the Inventory list.
-async function ensureInventoryItem(materialName){
+async function ensureInventoryItem(materialName,partNo){
   materialName=(materialName||'').trim();
-  if(!materialName)return;
-  const exists=DB.inventory.find(i=>String(i.material||'').trim().toLowerCase()===materialName.toLowerCase());
+  const pn=String(partNo||'').trim().toLowerCase();
+  if(!materialName && !pn)return;
+  // Skip if this part number (or, when no part no., this material name) is already in stock.
+  const exists=DB.inventory.find(i=>{
+    if(pn && String(i.partNo||'').trim().toLowerCase()===pn) return true;
+    return !pn && String(i.material||'').trim().toLowerCase()===materialName.toLowerCase();
+  });
   if(exists)return;
-  const item={material:materialName,category:'',unit:'',qtyOnHand:0,minStock:0,location:'',status:'In Stock',notes:'Auto-added from delivery'};
+  const item={material:materialName,partNo:partNo||'',category:'',unit:'',qtyOnHand:0,minStock:0,location:'',status:'In Stock',notes:'Auto-added from delivery'};
   if(USING_AW){ await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'inventory',data:JSON.stringify(item)}); }
   else { item.id=nextId.inventory++; DB.inventory.push(item); }
 }
@@ -1449,7 +1467,7 @@ async function saveItem(){
 
   // ── Store: make sure a delivered material shows up in Inventory (on-hand is computed live) ──
   if(kind==='delivery' && RECEIVED_STATES.includes(obj.status)){
-    await ensureInventoryItem(obj.material);
+    await ensureInventoryItem(obj.material,obj.partNo);
   }
 
   closeModal();
@@ -1618,7 +1636,7 @@ function activeReportConfig(){
     drawing:{title:'Drawings',headers:['Drawing no.','Project','Title','Type','Issued','Status'],rows:DB.drawing.map(it=>[it.drawingNo,it.projectName,it.title,it.drawingType,it.issuedDate,it.status])},
     wir:{title:'WIR',headers:['WIR no.','Activity','Location','Inspection date','Status'],rows:DB.wir.map(it=>[it.wirNo,it.activity,it.location,it.inspectionDate,it.status])},
     mir:{title:'MIR',headers:['MIR no.','Material','Supplier','Inspection date','Qty','Status'],rows:DB.mir.map(it=>[it.mirNo,it.material,it.supplier,it.inspectionDate,it.qty,it.status])},
-    inventory:{title:'Inventory',headers:['Material','Part no.','Date','Category','On hand','Min stock','Remaining to deliver','Location','Status'],rows:DB.inventory.map(it=>{const r=remainingToDeliverForMaterial(it.material);return[it.material,it.partNo,it.date,it.category,`${onHandForMaterial(it.material)} ${it.unit||''}`,`${it.minStock||0} ${it.unit||''}`,`${r} ${it.unit||''}`,it.location,autoStockStatus(onHandForMaterial(it.material),it.minStock)];})},
+    inventory:{title:'Inventory',headers:['Material','Part no.','Date','Category','On hand','Min stock','Remaining to deliver','Location','Status'],rows:DB.inventory.map(it=>{const r=remainingToDeliverForMaterial(it.material);return[it.material,it.partNo,it.date,it.category,`${onHandForItem(it)} ${it.unit||''}`,`${it.minStock||0} ${it.unit||''}`,`${r} ${it.unit||''}`,it.location,autoStockStatus(onHandForItem(it),it.minStock)];})},
     srequest:{title:'Material Requests',headers:['Req no.','Material','Part no.','Date','Ordered Qty','Delivered Qty','Remaining Qty','Delivery Status','Required by','Status'],rows:DB.srequest.map(it=>{const ds=deliveryStatusForRequest(it);return[it.reqNo,it.material,it.partNo||partNoForMaterial(it.material),it.date,`${ds.ordered} ${it.unit||''}`,`${ds.delivered} ${it.unit||''}`,`${ds.remaining} ${it.unit||''}`,ds.status,it.requiredBy,it.status];})},
     delivery:{title:'Deliveries',headers:['Del no.','Req no.','Material','Part no.','Supplier','Qty received','Expected','Condition','Status'],rows:DB.delivery.map(it=>[it.deliveryNo,it.reqNo,it.material,it.partNo||partNoForMaterial(it.material),it.supplier,it.qtyReceived,it.expectedDate,it.condition,it.status])},
     used:{title:'Material Used',headers:['Date','Material','Part no.','Qty used','Area / Location','Used by','Notes'],rows:DB.used.map(it=>[it.date,it.material,it.partNo||partNoForMaterial(it.material),it.qtyUsed,it.area,it.usedBy,it.notes])},
