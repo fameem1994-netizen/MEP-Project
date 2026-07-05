@@ -948,25 +948,30 @@ function usedQtyForMaterial(materialName){
 function onHandForMaterial(materialName){
   return receivedQtyForMaterial(materialName)-usedQtyForMaterial(materialName);
 }
-// Identify a stock item by its part number when present, else by material name.
-// This consolidates the same physical item (same part no.) even if the name was typed differently.
-function stockKey(o){
-  let p=String((o&&o.partNo)||'').trim().toLowerCase();
-  if(!p) p=String(partNoForMaterial(o&&o.material)||'').trim().toLowerCase();
-  return p ? ('p:'+p) : ('m:'+String((o&&o.material)||'').trim().toLowerCase());
+// Two entries are the same stock item if their part numbers match (when BOTH have one),
+// otherwise if their material names match. Handles same-part/different-name AND
+// missing-part-number cases so deliveries always reconcile with inventory.
+function sameStock(a,b){
+  const pa=String((a&&a.partNo)||'').trim().toLowerCase();
+  const pb=String((b&&b.partNo)||'').trim().toLowerCase();
+  if(pa && pb) return pa===pb;
+  return String((a&&a.material)||'').trim().toLowerCase()===String((b&&b.material)||'').trim().toLowerCase();
 }
 function onHandForItem(item){
-  const k=stockKey(item);
-  const recv=DB.delivery.filter(d=>RECEIVED_STATES.includes(d.status)&&stockKey(d)===k).reduce((s,d)=>s+Number(d.qtyReceived||0),0);
-  const used=DB.used.filter(u=>stockKey(u)===k).reduce((s,u)=>s+Number(u.qtyUsed||0),0);
+  const recv=DB.delivery.filter(d=>RECEIVED_STATES.includes(d.status)&&sameStock(d,item)).reduce((s,d)=>s+Number(d.qtyReceived||0),0);
+  const used=DB.used.filter(u=>sameStock(u,item)).reduce((s,u)=>s+Number(u.qtyUsed||0),0);
   return recv-used;
 }
 
 function partNoForMaterial(materialName){
   const m=String(materialName||'').trim().toLowerCase();
   if(!m)return '';
-  const inv=DB.inventory.find(i=>String(i.material||'').trim().toLowerCase()===m);
-  return inv?(inv.partNo||''):'';
+  // Find a part number for this material from any source: inventory, deliveries, requests, usage, MIR.
+  for(const k of ['inventory','delivery','srequest','used','mir']){
+    const hit=(DB[k]||[]).find(x=>String(x.material||'').trim().toLowerCase()===m && String(x.partNo||'').trim());
+    if(hit)return String(hit.partNo).trim();
+  }
+  return '';
 }
 function renderInventory(){
   const b=document.getElementById('inventory-body');
@@ -980,7 +985,7 @@ function renderInventory(){
     const rcls=remainingToDeliver>0?'low':'';
     return `<tr>
       <td><strong>${it.material}</strong></td>
-      <td style="color:var(--muted);font-size:.8rem">${it.partNo||'–'}</td>
+      <td style="color:var(--muted);font-size:.8rem">${it.partNo||partNoForMaterial(it.material)||'–'}</td>
       <td style="color:var(--muted);font-size:.8rem">${it.date||'–'}</td>
       <td><span style="color:var(--muted);font-size:.8rem">${it.category||'–'}</span></td>
       <td>
@@ -1430,15 +1435,19 @@ const RECEIVED_STATES=["Received","Inspected","Stored"];
 // We only make sure a delivered material has a row in the Inventory list.
 async function ensureInventoryItem(materialName,partNo){
   materialName=(materialName||'').trim();
-  const pn=String(partNo||'').trim().toLowerCase();
-  if(!materialName && !pn)return;
-  // Skip if this part number (or, when no part no., this material name) is already in stock.
-  const exists=DB.inventory.find(i=>{
-    if(pn && String(i.partNo||'').trim().toLowerCase()===pn) return true;
-    return !pn && String(i.material||'').trim().toLowerCase()===materialName.toLowerCase();
-  });
-  if(exists)return;
-  const item={material:materialName,partNo:partNo||'',category:'',unit:'',qtyOnHand:0,minStock:0,location:'',status:'In Stock',notes:'Auto-added from delivery'};
+  partNo=String(partNo||'').trim();
+  if(!materialName && !partNo)return;
+  const probe={material:materialName,partNo};
+  const existing=DB.inventory.find(i=>sameStock(i,probe));
+  if(existing){
+    // If the inventory row has no part number yet, copy it from the delivery.
+    if(partNo && !String(existing.partNo||'').trim()){
+      existing.partNo=partNo;
+      if(USING_AW){ try{ await awDB.updateDocument(AW_DATABASE,AW_COLLECTION,existing.id,{data:JSON.stringify(stripId(existing))}); }catch(e){} }
+    }
+    return;
+  }
+  const item={material:materialName,partNo,category:'',unit:'',qtyOnHand:0,minStock:0,location:'',status:'In Stock',notes:'Auto-added from delivery'};
   if(USING_AW){ await awDB.createDocument(AW_DATABASE,AW_COLLECTION,Appwrite.ID.unique(),{kind:'inventory',data:JSON.stringify(item)}); }
   else { item.id=nextId.inventory++; DB.inventory.push(item); }
 }
